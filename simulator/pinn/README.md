@@ -6,6 +6,178 @@
 
 ---
 
+## Agent Flow
+
+```
+                        PINN GENERATION AGENT FLOW
+                   (GaitSense Constitutional Governance)
+  ═══════════════════════════════════════════════════════════════════
+
+   LEGISLATURE (Bills)           BUREAUCRACY (Standing Orders)
+   ────────────────────          ──────────────────────────────
+
+   ┌─────────────┐
+   │ loss-setter │ ── derives L_ODE, L_vel, L_phase
+   │ (Stage 1)   │    λ weights from E[L²] at init
+   └──────┬──────┘
+          │ bill_loss_weights_v1
+          ▼
+   ┌──────────────┐
+   │  [HUMAN]     │ ◄─── Review derivation trace
+   │  Ratify λ    │      Approve λ values + balance
+   └──────┬───────┘
+          │ RATIFIED
+          ▼
+   ┌──────────────┐
+   │ pinn-compiler│ ── lr, epochs, warmup,
+   │ (Stage 2)    │    batch_size, early stop
+   └──────┬───────┘
+          │ bill_train_config_v{N}
+          ▼
+   ┌──────────────┐
+   │  [HUMAN]     │ ◄─── Review hyperparameters
+   │  Ratify cfg  │
+   └──────┬───────┘
+          │ RATIFIED
+          ▼
+   ┌─────────────────┐
+   │synthetic-data-  │ ── 500 random profiles
+   │setter (Stage 3) │    + 4 anchors, distributions
+   └────────┬────────┘
+            │ bill_data_config_v1
+            ▼
+   ┌──────────────┐
+   │  [HUMAN]     │ ◄─── Review param distributions
+   │  Ratify data │      terrain splits, anchor roles
+   └──────┬───────┘
+          │ RATIFIED
+          │
+          │                ┌──────────────────┐
+          │                │   layer-setter   │ ── Fourier vs MLP
+          │                │   (parallel)     │    architecture.json
+          │                └────────┬─────────┘
+          │                         │ pinn_model.py
+          ▼                         ▼
+   ┌───────────────────────────────────────────────┐
+   │           synthetic-data-generator            │
+   │  walker_model.py ──► 504 profiles × 208 Hz    │
+   │  training_data/{X,Y,t}_{train,val,test}.npy   │
+   └────────────────────┬──────────────────────────┘
+                        │
+                        ▼
+   ┌───────────────────────────────────────────────┐
+   │             physics-reviewer                  │
+   │  derivation trace table + 4-panel balance     │
+   │  plot ──► physics_balance_v{N}.png            │
+   └────────────────────┬──────────────────────────┘
+                        │
+                        ▼
+   ┌──────────────┐
+   │  [HUMAN]     │ ◄─── Review balance plot
+   │  Confirm     │      Confirm λ·L within 0.1–10×
+   └──────┬───────┘
+          │ CONFIRMED
+          ▼
+   ┌───────────────────────────────────────────────┐
+   │               pinn-executor                   │
+   │  train_pinn.py ──► MPS/CPU training loop      │
+   │  Amendment 14 milestone logs every 10 epochs  │
+   │  NaN/Inf guard ── Amendment 7 three-strike    │
+   │  best_v{N}.pt saved on val loss improvement   │
+   └──────┬──────────────────────┬─────────────────┘
+          │                      │
+          ▼                      ▼
+   ┌─────────────┐      ┌────────────────┐
+   │  train-sum  │      │ pinn-archivist │
+   │  loss curve │      │ SHA-256 hash   │
+   │  4-panel    │      │ manifest.json  │ ◄── Amendment 16
+   │  plots      │      │ pinn_registry  │
+   └──────┬──────┘      └───────┬────────┘
+          │                     │
+          └──────────┬──────────┘
+                     ▼
+   ┌──────────────┐
+   │  [HUMAN]     │ ◄─── Review loss curves
+   │  Review      │      Check best epoch > warmup
+   └──────┬───────┘      (success criterion)
+          │
+          │  if best_epoch ≤ warmup ──► pinn-compiler (new Bill)
+          │  if PASS ────────────────────────────┐
+          ▼                                      │
+   ┌───────────────────────────────────────────────┐
+   │               pinn-validator                  │
+   │  Check 1: fidelity ≤15% per-axis (Amend. 19) │
+   │  Check 2: signal plots 4 profiles (Amend. 11) │
+   │  Check 3: VABS.F32 si_true=25% → SI>10%      │
+   │  ── Python screening only (not Renode)        │
+   └────────────────────┬──────────────────────────┘
+                        │
+                        ▼
+   ┌──────────────┐
+   │  [HUMAN]     │ ◄─── Review signal plots
+   │  Approve     │      Confirm fidelity + VABS
+   │  checkpoint  │
+   └──────┬───────┘
+          │ APPROVED
+          ▼
+   ┌─────────────────┐
+   │ pinn-grid-      │ ── axes (primitive-traced)
+   │ controller      │    min/max, clinical hypothesis
+   │ (Legislature)   │    Renode assertion
+   └────────┬────────┘
+            │ bill_grid_search_v{N}
+            ▼
+   ┌──────────────┐
+   │  [HUMAN]     │ ◄─── Ratify search domain
+   │  Ratify grid │
+   └──────┬───────┘
+          │ RATIFIED
+          ▼
+   ┌───────────────────────────────────────────────┐
+   │           batch PINN inference                │
+   │  grid_search/run_grid.py ──► Python screening │
+   │  boundary candidates ──► pinn-validator       │
+   │  plausible candidates ──► Renode (Amend. 18)  │
+   └────────────────────┬──────────────────────────┘
+                        │
+                        ▼
+   ┌──────────────┐
+   │  [HUMAN]     │ ◄─── Confirm each boundary
+   │  Confirm     │      verbatim (Amend. 18)
+   │  boundary    │
+   └──────┬───────┘
+          │ CONFIRMED
+          ▼
+   ┌───────────────────────────────────────────────┐
+   │           case_law.md entry                   │
+   │  parameter values + Renode evidence           │
+   │  + firmware Bill if clinically reachable      │
+   └───────────────────────────────────────────────┘
+
+  ═══════════════════════════════════════════════════════════════════
+  LAYER BOUNDARY (Amendment 3)
+  PINN output ≡ generate_imu_sequence(): (N,6) float32 @ 208 Hz
+  Layer 2 (imu_model.py) and above: UNCHANGED
+  ═══════════════════════════════════════════════════════════════════
+
+  AGENT ROLES
+  ───────────
+  [HUMAN]               Decision gate — Article II unconditional
+  loss-setter           Legislature  — derives + proposes λ weights
+  pinn-compiler         Legislature  — proposes training hyperparams
+  synthetic-data-setter Legislature  — proposes dataset config
+  layer-setter          Bureaucracy  — writes architecture from spec
+  synthetic-data-gen    Bureaucracy  — generates data from ratified config
+  physics-reviewer      Bureaucracy  — produces evidence, makes no ruling
+  pinn-executor         Bureaucracy  — runs training loop
+  train-sum             Bureaucracy  — plots loss curves
+  pinn-archivist        Bureaucracy  — hashes + registers checkpoints
+  pinn-validator        Bureaucracy  — blocks or passes (cannot approve)
+  pinn-grid-controller  Legislature  — proposes grid search domains
+```
+
+---
+
 ## What This Is
 
 `walker_model.py` generates IMU signals for 4 discrete walker profiles. The PINN generalises this to a **continuous parameter space** — enabling the `pinn-grid-controller` to search for gait algorithm failure boundaries that the 4 fixed profiles cannot reach.
