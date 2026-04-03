@@ -76,6 +76,7 @@ def main():
     lambda_ode         = cfg["lambda_ode"]
     lambda_vel         = cfg["lambda_vel"]
     lambda_phase       = cfg["lambda_phase"]
+    run_id             = cfg.get("run_id", "v1")
 
     # CLI override
     if args.max_epochs is not None:
@@ -85,7 +86,6 @@ def main():
         )
         epochs_max = args.max_epochs
 
-    run_id          = "v1"
     checkpoint_path = ckpt_dir / f"best_{run_id}.pt"
     metrics_path    = ckpt_dir / f"run_{run_id}_metrics.jsonl"
 

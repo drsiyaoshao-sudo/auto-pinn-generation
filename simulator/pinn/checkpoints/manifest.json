@@ -27,9 +27,45 @@
         "trainable_parameters": 330246
       },
       "bills": {
-        "loss_weights": "bill_loss_weights_v1 — RATIFIED 2026-04-03",
-        "train_config": "bill_train_config_v1 — RATIFIED 2026-04-03",
-        "data_config": "bill_data_config_v1 — RATIFIED 2026-04-03"
+        "loss_weights": "bill_loss_weights_v1 \u2014 RATIFIED 2026-04-03",
+        "train_config": "bill_train_config_v1 \u2014 RATIFIED 2026-04-03",
+        "data_config": "bill_data_config_v1 \u2014 RATIFIED 2026-04-03"
+      },
+      "validated": false,
+      "human_decision": "PENDING",
+      "archived_date": "2026-04-03"
+    },
+    {
+      "run_id": "v2",
+      "checkpoint_file": "simulator/pinn/checkpoints/best_v1.pt",
+      "sha256": "5983ba9bc2015bdd8ac597b0f5597a0570a879442e3b9e0a68100970ba815bdc",
+      "note": "File is best_v1.pt \u2014 run_id bug in train_pinn.py (now fixed). Contains v2 weights. best_epoch=35 from training output; metrics JSONL logs every 10 epochs so epoch 35 is not in log.",
+      "best_epoch": 35,
+      "best_val_loss": 0.422757,
+      "total_epochs_run": 500,
+      "early_stop": true,
+      "parameter_set": {
+        "lambda_ode": 0.00013425,
+        "lambda_vel": 2.8691,
+        "lambda_phase": 78.472,
+        "lr_initial": 0.0003,
+        "epochs_max": 2000,
+        "physics_loss_warmup_epochs": 300,
+        "batch_size": 256,
+        "seed": 42
+      },
+      "architecture": {
+        "use_fourier": true,
+        "fourier_dim": 256,
+        "hidden_dim": 256,
+        "n_layers": 4,
+        "output_dim": 6,
+        "trainable_parameters": 330246
+      },
+      "bills": {
+        "loss_weights": "bill_loss_weights_v1 \u2014 RATIFIED 2026-04-03",
+        "train_config": "bill_train_config_v2 \u2014 RATIFIED 2026-04-03",
+        "data_config": "bill_data_config_v1 \u2014 RATIFIED 2026-04-03"
       },
       "validated": false,
       "human_decision": "PENDING",
