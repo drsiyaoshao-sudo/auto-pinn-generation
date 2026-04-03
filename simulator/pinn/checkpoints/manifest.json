@@ -1,0 +1,39 @@
+{
+  "checkpoints": [
+    {
+      "run_id": "v1",
+      "checkpoint_file": "simulator/pinn/checkpoints/best_v1.pt",
+      "sha256": "062bfa2c810e40aa936de444e45ac35443f4e4b7ec3faf70b3a6a7b4a37bc376",
+      "best_epoch": 20,
+      "best_val_loss": 0.44222936034202576,
+      "total_epochs_run": 190,
+      "early_stop": true,
+      "parameter_set": {
+        "lambda_ode": 0.00013425,
+        "lambda_vel": 2.8691,
+        "lambda_phase": 78.472,
+        "lr_initial": 0.001,
+        "epochs_max": 2000,
+        "physics_loss_warmup_epochs": 100,
+        "batch_size": 256,
+        "seed": 42
+      },
+      "architecture": {
+        "use_fourier": true,
+        "fourier_dim": 256,
+        "hidden_dim": 256,
+        "n_layers": 4,
+        "output_dim": 6,
+        "trainable_parameters": 330246
+      },
+      "bills": {
+        "loss_weights": "bill_loss_weights_v1 — RATIFIED 2026-04-03",
+        "train_config": "bill_train_config_v1 — RATIFIED 2026-04-03",
+        "data_config": "bill_data_config_v1 — RATIFIED 2026-04-03"
+      },
+      "validated": false,
+      "human_decision": "PENDING",
+      "archived_date": "2026-04-03"
+    }
+  ]
+}
