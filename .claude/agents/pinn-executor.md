@@ -15,7 +15,12 @@ Before executing, verify all four preconditions are met. If any fail, stop and r
 1. `simulator/pinn/pinn_model.py` exists and `architecture.json` is present → `layer-setter` completed
 2. `simulator/pinn/physics_loss.py` exists and `physics_review_log.json` has `"human_decision": "APPROVED"` → `physics-reviewer` completed and human approved
 3. `simulator/pinn/train_config.json` exists and contains `"ratified_date"` field → `pinn-compiler` Bill was ratified
-4. Training data files exist in `simulator/pinn/training_data/` for all 4 profiles → data is ready
+4. Training data files exist in `simulator/pinn/training_data/` → data is ready. Check for presence of:
+   - `simulator/pinn/training_data/dataset_manifest.json` (written by `synthetic-data-generator`) — preferred; confirms full synthetic dataset is present
+   - OR at minimum: `anchor_flat.npy`, `anchor_bad_wear.npy`, `anchor_stairs.npy`, `anchor_slope.npy` in `simulator/pinn/training_data/profiles/` — the exact filenames written by `synthetic-data-generator` for the 4 anchor profiles
+   - Do NOT check for `flat.npy`, `stairs.npy` etc. — those are not the filenames produced by `synthetic-data-generator`
+   - If only anchors are present (no manifest, no random profiles): print a WARNING that training is on 4 profiles only and proceed; this is valid for a baseline-only run
+   - If no data files at all: fail the precondition check — `synthetic-data-generator` has not run
 
 ## Your Standing Order
 

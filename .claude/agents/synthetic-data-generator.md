@@ -25,12 +25,26 @@ When all preconditions pass:
 
    **Profile sampler:**
    - Seed `np.random.default_rng(data_config["seed"])` for full reproducibility
-   - For each of `n_random_profiles` iterations:
-     - Sample `terrain` from the categorical distribution (terrain_weights)
-     - Sample each axis from its declared distribution, clipped to [min, max]
-     - Construct a `WalkerProfile` dataclass — let `__post_init__` run to validate derived quantities
-     - If `WalkerProfile.__post_init__` raises (invalid parameter combination): skip and resample, log the skip
-     - Generate `n_steps_per_profile` steps using `generate_imu_sequence(profile, n_steps, rng=rng)`
+   - Use a resample-until-valid loop — target exactly `n_random_profiles` valid profiles:
+     ```
+     valid_profiles = []
+     attempts = 0
+     max_attempts = n_random_profiles * 20   # safety ceiling: 20× target
+     while len(valid_profiles) < n_random_profiles and attempts < max_attempts:
+         attempts += 1
+         terrain = sample terrain from categorical distribution
+         vert_osc = sample from terrain-conditional distribution (data_config terrain_conditional field)
+         [sample all other axes from their declared distributions]
+         try:
+             profile = WalkerProfile(...); profile.__post_init__()
+             valid_profiles.append(profile)
+         except:
+             log_skip(attempts)  # do not break — continue sampling
+     if len(valid_profiles) < n_random_profiles:
+         ESCALATE to human (max_attempts reached without enough valid profiles)
+     ```
+   - This guarantees the final dataset always contains exactly `n_random_profiles` valid profiles regardless of skip rate, up to the max_attempts safety ceiling
+   - For `vertical_oscillation_cm`: read the `terrain_conditional` field in `data_config.json` and use the terrain-appropriate sub-distribution (flat/slope vs stairs have different bounds — see `synthetic-data-setter`)
    - Inject all 4 anchor profiles at the end (always in train split)
 
    **Split assignment:**
@@ -170,7 +184,8 @@ look representative before invoking pinn-executor.
 
 Stop and report to human if:
 - `data_config.json` does not exist or has no `ratified_date` (wrong invocation order)
-- More than 10% of sampled profiles are invalid combinations (sampling bounds likely misconfigured — escalate before spending time generating the full dataset)
+- More than 10% of attempts are invalid combinations at the halfway point (sampling bounds likely misconfigured — escalate before spending time generating the full dataset)
+- `max_attempts` ceiling reached before `n_random_profiles` valid profiles are generated (bounds are too restrictive or physiologically inconsistent — escalate to `synthetic-data-setter` for a revised Bill)
 - Disk space is insufficient for the estimated output size (check before starting, not after 400 profiles)
 - Any generated `.npy` file contains NaN or Inf (physics violation in `walker_model.py` — immediate halt, do not continue generating)
 - `training_data/` already contains a manifest from a previous generation run — confirm with human before overwriting (Amendment 14: human must decide whether to regenerate or reuse)

@@ -30,6 +30,7 @@ When invoked, you:
    - Walking speed constraint: `v_x = cadence_spm/60 × step_length_m`
    - Loss: `L_vel = mean((v_x_pred - walking_speed_ms)²)`
    - `v_x_pred` is computed as the numerical integral of `ax_pred` over one step period
+   - **Critical autograd requirement:** `ax_pred` must remain an attached PyTorch tensor (no `.detach()`, no `.numpy()` conversion) during the integral computation. The integral must be implemented using `torch.cumsum` or `torch.trapezoid` on the live computation graph. If NumPy or a detached tensor is used, the gradient of `L_vel` with respect to network weights is zero — the loss registers a finite value but produces no learning signal. This is a silent failure: training proceeds, loss is printed, but velocity constraint is never enforced. The `physics_loss.py` implementation must include a `assert ax_pred.requires_grad` guard at the start of `l_vel()` to catch this at runtime.
 
    **L_phase — Stance/swing timing constraint**
    - Physiological 60/40 stance/swing split (documented constant, Amendment 15 applies)

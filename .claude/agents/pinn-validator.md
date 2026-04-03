@@ -58,10 +58,15 @@ Print paths to console. These plots require human visual review — do not skip 
 
 ### Check 3 — VABS.F32 Precedent: Pathological Mode Validation
 
+**This is a Python-path screening check, not the Renode gold standard.**
+- PASS here: clears the checkpoint for grid search entry — the PINN can generate pathologically-detectable signals
+- FAIL here: blocks the checkpoint — the PINN is not fit for grid search
+- Renode confirmation (Amendment 18): required separately for each grid search *boundary candidate*, not here. A checkpoint that passes Check 3 is cleared for grid search; each boundary candidate found during grid search still requires its own Renode run before being recorded in Case Law.
+
 For each of the 4 profiles, generate a PINN signal with `si_stance_true_pct=25.0` injected:
 1. Create a modified `WalkerProfile` for each base profile with `si_stance_true_pct=25.0`
 2. Generate 100 steps using `pinn_generate_imu_sequence()`
-3. Run through `simulator/gait_algorithm.py` (Python path, not Renode — fast check)
+3. Run through `simulator/gait_algorithm.py` (Python path, not Renode — fast screening check)
 4. Record the final reported SI from the rolling window
 
 Print the pathological validation table:
@@ -124,7 +129,7 @@ Stop. Do not clear the checkpoint for grid search. The human must confirm.
 ## What you do NOT do
 
 - You do not approve the checkpoint — only the human approves
-- You do not run Renode — that is reserved for boundary confirmation (Amendment 18)
+- You do not run Renode — that is reserved for boundary confirmation (Amendment 18). Check 3 uses the Python gait algorithm as a fast screening proxy. Renode is the gold standard and is invoked separately per boundary candidate during grid search, not here.
 - You do not modify `walker_model.py` or any source file
 - You do not skip any of the three checks even if Check 1 fails — complete all three and report the full picture
 

@@ -17,10 +17,12 @@ When invoked, you:
    - Secondary inputs: `slope_deg`, `stance_frac`, `si_stance_true_pct`, `mounting_offset_deg`, `loose_fit_attenuation`
    - Terrain type: encoded as integer (flat=0, slope=1, stairs=2)
 2. Determine total input dimension (count all conditioning variables)
-3. Select architecture class based on input dimension and signal complexity:
-   - If input_dim ≤ 10 and terrain is flat/slope only: plain MLP (4 hidden layers, width 256)
-   - If input_dim > 10 or stairs terrain included: Fourier feature network (random Fourier features, σ=1.0, mapped to 256-dim, then 4 hidden layers width 256)
-   - Rationale: stair walker produces non-sinusoidal signal morphology that benefits from frequency-domain input encoding
+3. Select architecture class based on terrain scope, not input dimension count:
+   - Read `simulator/pinn/data_config.json` if it exists — check `terrain_weights` for presence of `"stairs"` key with weight > 0
+   - If stairs terrain is in scope (weight > 0 or data_config not yet written): Fourier feature network (random Fourier features, σ=1.0, mapped to 256-dim, then 4 hidden layers width 256)
+   - If flat/slope only (stairs weight = 0 and explicitly excluded): plain MLP (4 hidden layers, width 256)
+   - Default when data_config does not exist yet: Fourier feature network (conservative — stairs may be added later)
+   - Rationale: stair walker produces non-sinusoidal sigmoid toe-roll loading that benefits from frequency-domain input encoding. Input dimension count is not the correct discriminator — it changes when new fields are added to WalkerProfile and would silently flip the architecture. Terrain scope is fixed by the ratified data Bill and does not drift.
 4. Write `simulator/pinn/pinn_model.py` containing:
    - `PINNModel` class (torch.nn.Module)
    - `__init__(self, input_dim, hidden_dim=256, n_layers=4, use_fourier=False, fourier_sigma=1.0)`

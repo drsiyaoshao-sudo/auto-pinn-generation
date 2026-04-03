@@ -16,6 +16,12 @@ When invoked, you:
    - Parameter count determines reasonable learning rate range
    - use_fourier flag affects warmup requirements (Fourier networks benefit from longer warmup)
 
+   Also read `simulator/pinn/data_config.json` if it exists (written by `synthetic-data-setter`) to determine dataset scale:
+   - `n_random_profiles` + 4 anchors determines whether full-batch is feasible
+   - If total profiles ≤ 20 (anchor-only or very small dataset): `batch_size = "full"` is appropriate
+   - If total profiles > 20 (synthetic dataset present): `batch_size = 256` samples, not full-batch
+   - Rationale: full-batch over 500 profiles × ~2500 samples = 1.25M samples per gradient step exceeds typical GPU memory and slows iteration. Mini-batch with shuffle is standard practice at this scale. The justification in the Bill must reflect the actual dataset size — "training set is small" is only true for 4 anchor profiles, not for the 500-profile synthetic dataset.
+
 2. Read any existing `simulator/pinn/train_config.json` — if present and RATIFIED, a new Bill is required to change it. Do not silently overwrite.
 
 3. Propose the following hyperparameters with physical/engineering justification for each:
@@ -28,7 +34,7 @@ When invoked, you:
    | `lr_min` | 1e-5 | Floor below which learning is negligible for float32 precision |
    | `epochs_max` | 2000 | Sufficient for convergence on 4-profile training set at this model scale |
    | `warmup_epochs` | 50 | Allow data loss to stabilise before physics loss contributes meaningfully |
-   | `batch_size` | full-batch | Training set is small (4 profiles × ~2500 samples each); full-batch is stable |
+   | `batch_size` | 256 (or full if ≤20 profiles) | Derived from dataset scale in data_config.json — full-batch only if total profiles ≤ 20; 256-sample mini-batch otherwise (1.25M sample dataset exceeds full-batch feasibility) |
    | `early_stop_patience` | 100 | Epochs with no val_loss improvement before stopping |
    | `early_stop_min_epoch` | 200 | Minimum epochs before early stopping is allowed to fire (prevents premature stop) |
    | `physics_loss_warmup` | 100 | Epochs before physics loss weight is linearly ramped from 0 to λ (prevents early instability) |

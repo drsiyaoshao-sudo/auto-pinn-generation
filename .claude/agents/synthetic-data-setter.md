@@ -27,7 +27,7 @@ When invoked, you:
    |---|---|---|---|---|
    | `cadence_spm` | N(100, 25²) | 60 | 160 | Healthy adult ambulation: 80–130 spm walking, up to 160 spm fast walk. 2.5σ upper tail from N(100,25²) = 162 → clip to 160. Excluded: running (>160 spm). |
    | `step_length_m` | N(0.72, 0.12²) | 0.25 | 1.10 | Adult step length: 0.5–0.9m walking, 0.25m stair tread. 2.5σ bounds. Excluded: paediatric (<0.4m typical), pathological shuffle (<0.3m). |
-   | `vertical_oscillation_cm` | N(4.5, 1.5²) | 1.5 | 18.0 | Flat walk: 3–6cm. Stairs: up to 18cm (riser height). 2.5σ from N(4.5,1.5²) = 8.25cm for non-stair terrain; stair terrain samples separately from N(15,3²). |
+   | `vertical_oscillation_cm` | Terrain-conditional (see below) | 1.5 | 18.0 | **Terrain-conditional bounds required** — 18cm is the stair riser height and is only physically valid for stairs terrain. Applying it to flat/slope terrain produces a physically implausible signal (walker_model.py will not reject it, but the IMU output would show a 18cm CoM oscillation on flat ground — never observed in any adult population). Flat/slope: N(4.5, 1.5²), min=1.5, max=8.0 (2.5σ from N(4.5,1.5²) = 8.25 → clip to 8.0). Stairs: N(15, 3²), min=10.0, max=20.0 (standard riser range 15–19cm, 1.67σ bounds). The data generator must enforce terrain-conditional sampling and must not draw from a single shared distribution. |
 
    **Terrain geometry:**
 
@@ -124,7 +124,12 @@ Estimated generation time: ~{minutes} min (single CPU)
   "axes": {
     "cadence_spm":              {"dist": "normal", "mu": 100, "sigma": 25, "min": 60,   "max": 160},
     "step_length_m":            {"dist": "normal", "mu": 0.72,"sigma": 0.12,"min": 0.25,"max": 1.10},
-    "vertical_oscillation_cm":  {"dist": "normal", "mu": 4.5, "sigma": 1.5, "min": 1.5, "max": 18.0},
+    "vertical_oscillation_cm":  {
+      "dist": "terrain_conditional",
+      "flat":  {"dist": "normal", "mu": 4.5,  "sigma": 1.5, "min": 1.5,  "max": 8.0},
+      "slope": {"dist": "normal", "mu": 4.5,  "sigma": 1.5, "min": 1.5,  "max": 8.0},
+      "stairs":{"dist": "normal", "mu": 15.0, "sigma": 3.0, "min": 10.0, "max": 20.0}
+    },
     "slope_deg":                {"dist": "uniform","min": 0,   "max": 15},
     "mounting_offset_deg":      {"dist": "normal", "mu": 0,   "sigma": 8,   "min": -25, "max": 25},
     "loose_fit_attenuation":    {"dist": "uniform","min": 0.5, "max": 1.0},
