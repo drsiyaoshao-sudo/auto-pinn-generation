@@ -162,3 +162,54 @@ First application: `MIN_STEP_INTERVAL_MS = 250` in `src/gait/step_detector.c`.
 Human ambulation cadence ~ N(130, 30²) spm across walking + running population.
 2.5σ upper tail: 205 spm → minimum step period 293 ms → 250 ms with margin.
 Excluded: running downhill (>210 spm, out of scope for SI measurement device).
+
+---
+
+### Amendment 16 — PINN Model Provenance and Versioning
+*Traces to: Article I + Article II*
+*Ratified: 2026-04-03. Proposed by: Claude Sonnet 4.6. Ratified by: sole human engineer.*
+
+Every trained PINN checkpoint must be uniquely identified by a SHA-256 hash, stored in a manifest alongside the exact (parameter set, loss weight vector, training epoch count, seed) tuple that produced it, and this manifest entry must exist before the checkpoint is used to generate any signal that enters the pipeline.
+
+Expansion: A PINN model is a compressed encoding of assumptions. Without provenance, two signals generated at different times cannot be compared — the model may have been retrained between them. This amendment closes the same traceability gap that Amendment 15 closes for statistical constants: the derivation chain must be auditable. The failure mode without it: a boundary finding from a grid search run is confirmed via Renode, then a subsequent training run silently changes the model, and the boundary can no longer be reproduced. The manifest entry is the minimum required audit trail.
+
+Manifest location: `simulator/pinn/checkpoints/manifest.json`
+Registry location: `docs/gaitsense_code/pinn_registry.md`
+Responsible agent: `pinn-archivist`
+
+---
+
+### Amendment 17 — PINN Physics Loss Weight Derivation Lock
+*Traces to: Article I*
+*Ratified: 2026-04-03. Proposed by: Claude Sonnet 4.6. Ratified by: sole human engineer.*
+
+The weight assigned to each physics loss term in the PINN training objective must be derived from the three walking primitives using the same derivation standard as Amendment 13, documented in a ratified Bill before training begins, and may not be adjusted between training runs without a new Bill and human approval.
+
+Expansion: Amendment 13 governs calibration constants in firmware. Amendment 17 extends that same rule to the PINN's physics loss weights. The failure mode without this rule: a researcher tunes the loss weights empirically until training curves look good, producing a network that fits the observed profiles but whose physics enforcement level is arbitrary. The resulting model may pass all 4 profiles and fail on an unseen parameter combination in a way that is entirely predictable from the physics ODE — but was not enforced because the weight on the ODE loss was reduced to improve training stability. This is precisely the scenario Article I forbids: a parameter that cannot be traced to a physical quantity. Each loss weight must be the ratio of the expected physical quantity magnitude (derivable from the primitives) to a reference scale.
+
+Bill format: `docs/gaitsense_code/bills/bill_loss_weights_v{N}.md`
+Responsible agent: `loss-setter` (proposes Bill), `physics-reviewer` (generates derivation evidence for human)
+
+---
+
+### Amendment 18 — Grid Search Boundary Confirmation Standard
+*Traces to: Article I + Article II*
+*Ratified: 2026-04-03. Proposed by: Claude Sonnet 4.6. Ratified by: sole human engineer.*
+
+A PINN-discovered algorithm failure boundary is not a confirmed finding until: a Renode simulation test (per Amendment 12) has been run at the boundary parameter point, the test has produced a non-trivial output (per VABS.F32 Case Precedent), the signal has been plotted (Amendment 11), and the human has confirmed the finding verbatim. A PINN prediction alone — however well-trained — does not constitute an empirical confirmation.
+
+Expansion: The PINN's purpose is discovery — finding parameter combinations where the gait algorithm fails. But a PINN-predicted failure boundary is a model prediction, not an empirical measurement. The PINN may find a boundary because of a limitation in its own physics enforcement, not because of a real firmware failure. The only valid confirmation is Renode: the same firmware ELF that runs on hardware, executing the PINN-generated signal at the boundary parameter point, producing a measurable result. The VABS.F32 case precedent is directly applicable: a boundary at which SI = 0% is reported must be validated under a pathological input (true SI ≠ 0%) to confirm the result is not a silent zero from a computation error. Confirmed boundaries are recorded in `case_law.md` using the standard case format with Renode evidence.
+
+Responsible agent: `pinn-grid-controller` (proposes search domain Bill), main session (runs Renode confirmation)
+
+---
+
+### Amendment 19 — PINN Surrogate Fidelity Threshold
+*Traces to: Article I*
+*Ratified: 2026-04-03. Proposed by: Claude Sonnet 4.6. Ratified by: sole human engineer.*
+
+Before a PINN model may be used for grid search, it must reproduce all 4 existing walker profiles with a per-axis maximum absolute error below 15% of the peak signal amplitude for that profile, measured against `walker_model.py` output on the same parameter set and seed. This threshold must be re-derived if the sensor specification or any walker profile primitive changes.
+
+Expansion: The 15% fidelity threshold is physically derived, not tuned. The LSM6DS3TR-C accel sensitivity is 4.786×10⁻³ m/s²/LSB at ±16g. At peak heel-strike impact (~18 m/s²), one LSB = 0.027% of peak — far below 15%. The 15% bound is set by the PINN's ability to represent the signal shape, not by sensor quantisation. Physical interpretation: a PINN within 15% of the true peak on all 4 profiles has correctly learned the primitive-to-signal mapping for the known operating points. At 15% of the heel-strike acc_z peak (~18 m/s²): error = 2.7 m/s² — still above the 5.0 m/s² adaptive detection threshold, so step detection is unaffected at known profiles. A PINN that cannot reproduce the 4 known points within this threshold has not learned the physics and must not be trusted for extrapolation into unseen parameter regions.
+
+Responsible agent: `pinn-validator` (Check 1 of 3 in validation pipeline)
