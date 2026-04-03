@@ -1,0 +1,150 @@
+{
+  "n_random_profiles": 500,
+  "n_anchor_profiles": 4,
+  "n_total_profiles": 504,
+  "samples_per_profile": 208,
+  "terrain_distribution": {
+    "flat": 0.60,
+    "slope": 0.20,
+    "stairs": 0.20
+  },
+  "train_fraction": 0.70,
+  "val_fraction": 0.15,
+  "test_fraction": 0.15,
+  "seed": 42,
+  "parameter_distributions": {
+    "cadence_spm": {
+      "type": "normal",
+      "mu": 95.0,
+      "sigma": 15.0,
+      "min": 60.0,
+      "max": 140.0,
+      "article_i_primitive": "cadence",
+      "amendment_15_doc": "Community ambulation cadence ~ N(95, 15^2) spm. Population: healthy community-dwelling adults. 2.33-sigma lower tail: 60 spm (very slow, frailty boundary). 3.0-sigma upper tail: 140 spm (brisk walk). Excluded: running (>140 spm). Traces to: cadence_spm primitive (Article I)."
+    },
+    "step_length_m": {
+      "type": "normal",
+      "mu": 0.65,
+      "sigma": 0.12,
+      "min": 0.25,
+      "max": 1.0,
+      "article_i_primitive": "step_length",
+      "amendment_15_doc": "Adult step length ~ N(0.65, 0.12^2) m. Population: healthy community-dwelling adults. Lower tail 0.25 m: very slow or frail gait. Upper tail 1.0 m: tall athletic walkers. Excluded: running stride (>1.0 m). Traces to: step_length_m primitive (Article I)."
+    },
+    "vertical_oscillation_cm": {
+      "type": "terrain_conditional",
+      "flat": {
+        "type": "normal",
+        "mu": 4.5,
+        "sigma": 1.5,
+        "min": 1.5,
+        "max": 8.0,
+        "amendment_15_doc": "Flat CoM vertical oscillation ~ N(4.5, 1.5^2) cm. Population: healthy adults on level ground. Lower tail 1.5 cm: very stiff pathological gait. Upper tail 8.0 cm: exaggerated bounce gait. Traces to: vertical_oscillation_cm primitive (Article I)."
+      },
+      "slope": {
+        "type": "normal",
+        "mu": 4.5,
+        "sigma": 1.5,
+        "min": 1.5,
+        "max": 8.0,
+        "amendment_15_doc": "Slope CoM vertical oscillation ~ N(4.5, 1.5^2) cm. On moderate slopes (3-15 deg) the CoM vertical oscillation per step is dominated by foot placement geometry, not slope grade, so the distribution is identical to flat. Traces to: vertical_oscillation_cm primitive (Article I)."
+      },
+      "stairs": {
+        "type": "normal",
+        "mu": 15.0,
+        "sigma": 3.0,
+        "min": 10.0,
+        "max": 20.0,
+        "amendment_15_doc": "Stair CoM vertical oscillation ~ N(15.0, 3.0^2) cm. Physically grounded: standard UK/US residential riser height 17-22 cm -> CoM must clear this height per step. mu=15.0 cm from mean riser 18 cm minus partial CoM oscillation recovery. Lower tail 10.0 cm: low-rise steps. Upper tail 20.0 cm: high-rise industrial stairs. Traces to: vertical_oscillation_cm primitive (Article I)."
+      },
+      "article_i_primitive": "vertical_oscillation"
+    },
+    "slope_deg": {
+      "type": "terrain_conditional",
+      "flat": {
+        "type": "fixed",
+        "value": 0.0,
+        "article_i_primitive": "vertical_oscillation / terrain_geometry",
+        "note": "Flat terrain: zero slope by definition."
+      },
+      "slope": {
+        "type": "uniform",
+        "min": 3.0,
+        "max": 15.0,
+        "article_i_primitive": "vertical_oscillation / terrain_geometry",
+        "amendment_15_doc": "Slope angle uniform(3, 15) deg. Lower bound 3 deg: perceptible grade (ADA ramp minimum). Upper bound 15 deg: near limit of comfortable ambulation for healthy adults without assistive devices. Uniform chosen: no preferred grade within this physiological range. Traces to: vertical_oscillation_cm via acc_x_dc = G*sin(slope_rad) (Article I)."
+      },
+      "stairs": {
+        "type": "fixed",
+        "value": 0.0,
+        "article_i_primitive": "vertical_oscillation / terrain_geometry",
+        "note": "Stairs terrain: slope_deg fixed at 0 because IMU tilt is captured by the stair vertical oscillation model, not a continuous incline. See walker_model.py __post_init__ stair branch."
+      }
+    },
+    "stance_frac": {
+      "type": "terrain_conditional",
+      "flat": {
+        "type": "fixed",
+        "value": 0.60,
+        "amendment_15_doc": "Flat stance fraction fixed at 0.60. Population consensus: healthy adult stance fraction 58-62% of gait cycle on level ground. Fixed at midpoint 0.60 to prevent covariance with cadence in training data. Traces to: cadence_spm primitive via stance_dur_s = stance_frac * (60/cadence_spm) (Article I)."
+      },
+      "slope": {
+        "type": "fixed",
+        "value": 0.62,
+        "amendment_15_doc": "Slope stance fraction fixed at 0.62. Uphill ambulation increases stance fraction by 2-4 percentage points due to increased propulsive demand. 0.62 is 2pp above flat, consistent with 10 deg reference slope in PROFILES['slope']. Traces to: cadence_spm primitive (Article I)."
+      },
+      "stairs": {
+        "type": "fixed",
+        "value": 0.65,
+        "amendment_15_doc": "Stair stance fraction fixed at 0.65. Ascending stairs requires prolonged single-limb support to clear the riser, measured at 63-67% in instrumented stair studies. 0.65 matches PROFILES['stairs']. Traces to: cadence_spm primitive (Article I)."
+      }
+    },
+    "si_stance_true_pct": {
+      "type": "normal",
+      "mu": 5.0,
+      "sigma": 8.0,
+      "min": 0.0,
+      "max": 50.0,
+      "clip_negative_to_zero": true,
+      "article_i_primitive": "cadence (via stance duration asymmetry)",
+      "amendment_15_doc": "Symmetry Index ~ N(5.0, 8.0^2) pct, clipped at 0. Population: community-dwelling adults including sub-clinical asymmetry. mu=5.0 pct: mean mild asymmetry seen in general adult population (Robinson 1987 reports 10% clinical threshold; mu=5 captures sub-clinical). Upper tail 50 pct: moderate clinical pathology. Clip at 0 because SI is a magnitude (unsigned asymmetry). Traces to: cadence_spm via delta_s = SI * stance_nom_s / 200 in walker_model.py (Article I)."
+    },
+    "mounting_offset_deg": {
+      "type": "normal",
+      "mu": 0.0,
+      "sigma": 5.0,
+      "min": -15.0,
+      "max": 15.0,
+      "article_i_primitive": "vertical_oscillation (via sensor frame projection)",
+      "amendment_15_doc": "Mounting offset ~ N(0, 5^2) deg. Population: real-world device application by patients. sigma=5 deg: expected 1-sigma variation in patient self-application. Upper/lower bound +/-15 deg: maximum before acc_x/acc_z cross-projection corrupts step detection gate. Traces to: vertical_oscillation_cm via rotation_y matrix projection in walker_model.py (Article I)."
+    },
+    "loose_fit_attenuation": {
+      "type": "uniform",
+      "min": 0.75,
+      "max": 1.0,
+      "article_i_primitive": "vertical_oscillation (via HS impact attenuation)",
+      "amendment_15_doc": "Loose fit attenuation uniform(0.75, 1.0). 1.0 = perfect coupling; 0.75 = 25% signal attenuation from loose strap. Lower bound 0.75: at attenuation below 0.75 the HS impulse drops below the 5.0 m/s^2 adaptive detection threshold for flat walker, causing step detection failure -- this is a firmware boundary, not a data-gen parameter range. Uniform chosen: no preferred fit quality within physiologically valid range. Traces to: vertical_oscillation_cm via hs_impact_ms2 attenuation in walker_model.py (Article I)."
+    },
+    "step_variability_ms": {
+      "type": "normal",
+      "mu": 20.0,
+      "sigma": 10.0,
+      "min": 0.0,
+      "max": 60.0,
+      "article_i_primitive": "cadence (temporal variance of step period)",
+      "amendment_15_doc": "Step timing variability ~ N(20, 10^2) ms. Population: healthy adults across terrains. mu=20 ms: typical coefficient of variation 2-5% of step period at 100 spm (600 ms period) -> sigma ~= 12-30 ms; mu=20 ms is a conservative midpoint. Upper tail 60 ms: elevated variability seen in healthy elderly or challenging terrain (matches PROFILES['stairs'] step_variability_ms=25). Traces to: cadence_spm primitive via step_period_s = 60/cadence_spm (Article I)."
+    },
+    "terrain_int": {
+      "type": "categorical",
+      "values": {"flat": 0, "slope": 1, "stairs": 2},
+      "probabilities": {"flat": 0.60, "slope": 0.20, "stairs": 0.20},
+      "article_i_primitive": "all three primitives (terrain determines primitive ranges)",
+      "terrain_distribution_justification": "60/20/20 split. Flat 60%: dominant real-world ambulation context; ensures PINN learns the flat reference well. Slope 20%: community ambulation includes ramps and hills (ADA: up to 8.33% grade ubiquitous). Stairs 20%: stair ascent/descent is the most discriminative terrain for the gait algorithm because vertical_oscillation_cm shifts by >10 cm, fundamentally changing every derived signal parameter. Equal slope/stairs weighting ensures the PINN does not underfit either non-flat terrain. Traces to: all three Article I primitives."
+    }
+  },
+  "anchor_profiles": ["flat", "bad_wear", "stairs", "slope"],
+  "output_dir": "simulator/pinn/training_data",
+  "_created_by": "synthetic-data-setter",
+  "_bill": "bill_data_config_v1",
+  "_date": "2026-04-03"
+}

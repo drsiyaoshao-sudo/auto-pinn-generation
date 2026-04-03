@@ -1,0 +1,33 @@
+{
+  "input_dim": 10,
+  "input_fields": [
+    "cadence_spm",
+    "step_length_m",
+    "vertical_oscillation_cm",
+    "slope_deg",
+    "stance_frac",
+    "si_stance_true_pct",
+    "mounting_offset_deg",
+    "loose_fit_attenuation",
+    "step_variability_ms",
+    "terrain_int"
+  ],
+  "terrain_encoding": {"flat": 0, "slope": 1, "stairs": 2},
+  "time_input": "t_normalised [0,1] — appended to x before Fourier projection",
+  "combined_input_dim": 11,
+  "use_fourier": true,
+  "fourier_dim": 256,
+  "fourier_sigma": 1.0,
+  "fourier_seed": 42,
+  "fourier_projection_dim": 512,
+  "hidden_dim": 256,
+  "n_layers": 4,
+  "activation": "GELU",
+  "output_dim": 6,
+  "output_units": ["ax_ms2", "ay_ms2", "az_ms2", "gx_dps", "gy_dps", "gz_dps"],
+  "output_activation": "none",
+  "approx_parameters": 800000,
+  "architecture_selection_reason": "data_config.json absent at architecture time — default Fourier (conservative). Stairs terrain in future scope; Fourier features handle non-sinusoidal sigmoid toe-roll loading.",
+  "created_by": "layer-setter",
+  "date": "2026-04-03"
+}

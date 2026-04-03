@@ -1,0 +1,66 @@
+{
+  "n_train": 350,
+  "n_val": 79,
+  "n_test": 75,
+  "n_anchors": 4,
+  "samples_per_profile": 208,
+  "X_shape_train": [
+    350,
+    10
+  ],
+  "Y_shape_train": [
+    350,
+    208,
+    6
+  ],
+  "X_shape_val": [
+    79,
+    10
+  ],
+  "Y_shape_val": [
+    79,
+    208,
+    6
+  ],
+  "X_shape_test": [
+    75,
+    10
+  ],
+  "Y_shape_test": [
+    75,
+    208,
+    6
+  ],
+  "input_fields": [
+    "cadence_spm",
+    "step_length_m",
+    "vertical_oscillation_cm",
+    "slope_deg",
+    "stance_frac",
+    "si_stance_true_pct",
+    "mounting_offset_deg",
+    "loose_fit_attenuation",
+    "step_variability_ms",
+    "terrain_int"
+  ],
+  "output_fields": [
+    "ax_ms2",
+    "ay_ms2",
+    "az_ms2",
+    "gx_dps",
+    "gy_dps",
+    "gz_dps"
+  ],
+  "seed": 42,
+  "terrain_counts_train": {
+    "flat": 208,
+    "slope": 74,
+    "stairs": 68
+  },
+  "bill_data_config": "bill_data_config_v1",
+  "bill_data_config_status": "RATIFIED 2026-04-03",
+  "generated_by": "synthetic-data-generator",
+  "date": "2026-04-03",
+  "n_profiles_skipped": 0,
+  "skip_log": []
+}
