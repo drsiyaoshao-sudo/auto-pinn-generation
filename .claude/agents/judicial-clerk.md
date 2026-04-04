@@ -32,6 +32,10 @@ Read these files to confirm they exist:
 - `.claude/agents/simulator-operator.md`
 - `.claude/agents/plotter.md`
 - `.claude/agents/uart-reader.md`
+- `.claude/agents/pinn-executor.md`
+- `.claude/agents/pinn-compiler.md`
+- `.claude/agents/pinn-validator.md`
+- `.claude/agents/pinn-executor.md`
 
 Print `=== [AGENT NAME] FOUND ===` for each one that exists.
 Print `=== [AGENT NAME] MISSING — ESCALATE ===` for any that do not exist and stop.
