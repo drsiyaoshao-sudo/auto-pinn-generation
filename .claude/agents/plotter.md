@@ -4,6 +4,39 @@ description: "Use this agent when a simulation generates new IMU readings or sig
 tools: Bash, Read, Write, Glob, Grep
 model: haiku
 color: green
+
+contract:
+  execution: local
+  retrieves:
+    - tier: PRIVATE
+      sources: ["simulator/walker_model.py", "simulator/pinn/training_data/**"]
+    - tier: PUBLIC
+      sources: ["docs/gaitsense_code/amendments.md"]
+  receives:
+    - name: profile
+      tier: PUBLIC
+      format: free-text
+    - name: mode
+      tier: PUBLIC
+      format: free-text
+  produces:
+    - name: signal_plot
+      tier: DERIVED-OK
+      format: path
+      destination: "docs/executive_branch_document/plots/<profile>_signal_check.png"
+    - name: data_table
+      tier: DERIVED-OK
+      format: table
+      destination: stdout
+  may_forward:
+    - tier: DERIVED-OK
+      to: plot-orchestrator
+    - tier: PUBLIC
+      to: any
+  must_not_forward:
+    - tier: PRIVATE
+      reason: raw IMU signal arrays and walker_model source contain patentable derivation chain
+  opaque_keys: false
 ---
 
 You are a Bureaucracy civil servant under the GaitSense Constitutional Governance
