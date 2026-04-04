@@ -1,8 +1,10 @@
-# GaitSense — Business Model and Strategic Thesis
+# GaitSense — Business Model, AI Research Positioning, and Strategic Thesis
 
 **Date:** 2026-04-04
 **Status:** Internal — investor thesis + roadmap
 **Audience:** YC / a16z / Antler + ongoing customer discovery
+
+**Active customer discovery:** ASIC designers, edge device companies, MEMS startups, wearable hardware teams
 
 ---
 
@@ -224,6 +226,102 @@ Back to top
 
 ---
 
+## AI Research Positioning
+
+We are not an AI application company. We are an AI research startup whose research output is a governed co-design platform. The lab is the hardware design floor. The publications are the Bills, amendments, and case law. Every customer domain is a new research case study.
+
+### Novel Research Contributions
+
+**1. RAG with enforceable tier access control**
+Most RAG research assumes homogeneous corpus access — every chunk is equally retrievable by every agent. Our PRIVATE/DERIVED-OK/PUBLIC tier structure with opaque key masking at the agent boundary is a new architecture for privacy-preserving retrieval in regulated multi-agent systems. Not published. Not in any existing RAG framework.
+
+**2. Constitutional AI for physical systems**
+Anthropic's Constitutional AI addresses model behavior alignment. Ours addresses *decision governance* in a multi-agent system interacting with physical hardware — where the irreversible action is not a harmful output but a mask tape-out, a firmware flash, or a clinical deployment. The four-branch governance system (Legislature, Judiciary, Bureaucracy, Amendment ratification) is a novel contribution to human-AI teaming for high-stakes physical design.
+
+**3. Physics-primitive-grounded auto PINN generation**
+Most PINNs are domain-specific one-offs — loss terms manually written per problem. Our pipeline enforces that every loss term traces to one of three first-order physical primitives (vertical oscillation, cadence, step length) through a constitutional constraint (Article I). The result is a generalizable generation pipeline where the physics is constitutionally enforced, not manually asserted. The model provenance chain (Bills → case law → manifest.json) makes the training history auditable to a regulator — a property no existing PINN framework provides.
+
+**4. Agent-as-probe architecture for hybrid intelligence**
+The formal separation between evidence generation (agents) and decision authority (human Justice) is a contribution to human-AI teaming literature. Agents are probes — they produce measurements, not recommendations. The human is always the decision node. This is not a product choice constrained by safety concerns. It is a claim about the correct architecture for hybrid intelligence in domains where the cost of a wrong decision is physical and irreversible.
+
+**5. Hybrid intelligence as trust boundary, not cost optimization**
+The local/cloud split in our architecture is not about API costs or latency. It is a designed trust boundary:
+- Local LLM: retrieves PRIVATE corpus (derivation formulas, signal data, model weights), produces DERIVED-OK outputs
+- Cloud LLM: retrieves PUBLIC corpus (governance rules, constitutional text), reasons about process compliance
+- Human Justice: the only node holding both simultaneously — in their head, not in any model context
+
+This architecture satisfies FDA 21 CFR Part 11, patent defensibility, ITAR/EAR export control, and cross-org IP separation simultaneously. It is a new design pattern for regulated AI systems.
+
+### Customer Discovery as Research Validation
+
+Each customer conversation is simultaneously commercial discovery and a research case study:
+
+```
+ASIC designers
+  Research question: does constitutional governance scale to silicon design decisions?
+  Hypothesis: mask tape-out is the canonical Article II irreversible action —
+              the governance layer was designed for exactly this stakes level
+
+MEMS startups
+  Research question: do physics primitives generalize to micro-scale domains?
+  Hypothesis: MEMS physics reduces to the same three primitive types
+              (resonant frequency ↔ cadence, displacement ↔ vertical oscillation,
+               damping ↔ step length analog) — Article I may be domain-universal
+
+Edge device companies
+  Research question: does the distillation pipeline produce deployment-grade
+                     models from governed training corpora?
+  Hypothesis: Tier 2 revenue is their exact problem — they need local inference,
+              cannot afford cloud calls, and cannot send IP upstream
+
+Wearables (current domain — GaitSense)
+  Status: existence proof. Full pipeline running. 20 ratified amendments.
+  7 case law precedents. PINN v3 checkpoint registered.
+```
+
+### The Research-Product Loop
+
+```
+Research contribution validated in production
+        ↓
+Customer domain adds new private corpus
+        ↓
+Corpus funds next distillation run
+        ↓
+Distillation run surfaces new research questions
+(Does opaque key masking preserve enough signal for cloud reasoning?
+ Does constitutional case law transfer across domains?
+ What is the minimum local model size for physics-primitive enforcement?)
+        ↓
+Answers become the next paper AND the next product feature
+        ↓
+Back to top
+```
+
+**The position no one else can occupy:** Pure research labs have no product. Pure AI application companies have no novel research contribution. We have both — and the physical domain requirement means the research cannot be replicated without building the hardware pipeline. You cannot fork the physics.
+
+### Publication Roadmap
+
+1. **"Constitutional AI for Physical Systems"** — four-branch governance, judicial hearing procedure, agent-as-probe architecture. Target: NeurIPS workshop on human-AI teaming or ICLR.
+2. **"Privacy-Preserving RAG in Multi-Agent Hardware Design"** — tier access control, opaque key masking, the PRIVATE/DERIVED-OK/PUBLIC forwarding chain. Target: ACL or EMNLP (RAG track).
+3. **"Auto PINN Generation from Physics Primitives"** — the generalizable pipeline, Amendment 20 physics warmup constraint, provenance chain as regulatory artifact. Target: ICLR or ICML (physics-informed ML track).
+
+Each paper is also a product spec. Each product feature is also a research result.
+
+---
+
+## Customer Discovery Map
+
+| Segment | Pain point | Our wedge | Tier fit |
+|---|---|---|---|
+| ASIC designers | Design decision traceability; tape-out sign-off audit trail | Constitutional governance + case law as IP provenance | Tier 1 → Tier 3 |
+| MEMS startups | Physics simulation disconnected from design record; small teams, no PLM | Repo-as-product; agent hierarchy replaces PLM for 1–5 person team | Tier 1 |
+| Edge device companies | Need local inference; cannot send model IP to cloud; no distillation pipeline | Tier 2 managed distillation; model runs on-device, IP stays local | Tier 2 |
+| Wearable hardware | FDA traceability; clinical evidence chain; algorithm defensibility | Tier 3 certification package; case law + manifest.json as submission artifact | Tier 3 |
+| Deep tech / defense | ITAR compliance; local-only AI; export control on derivation formulas | Hybrid intelligence trust boundary; PRIVATE corpus never leaves local infra | Tier 2 + Tier 3 |
+
+---
+
 ## The Pitch in Three Sentences
 
-Hardware design is broken because physics, process, and IP record are three separate systems with no shared model of truth. We built the governance layer that collapses all three — enforced by hybrid intelligence where local models protect the IP and cloud models validate the process. The result is a co-design platform where agents act as evidence probes, humans remain the decision authority, and every design choice is automatically an IP record and a compliance artifact.
+Hardware design is broken because physics, process, and IP record are three separate systems with no shared model of truth. We built the governance layer that collapses all three — enforced by hybrid intelligence where local models protect the IP and cloud models validate the process. The result is an AI research platform where agents act as evidence probes, humans remain the decision authority, and every design choice is simultaneously an IP record, a compliance artifact, and a research data point.
