@@ -1,0 +1,22 @@
+{
+  "n_random_profiles": 500,
+  "n_anchor_profiles": 4,
+  "n_total_profiles": 504,
+  "samples_per_profile": 208,
+  "terrain_distribution": {
+    "flat": 0.60,
+    "slope": 0.20,
+    "stairs": 0.20
+  },
+  "train_fraction": 0.70,
+  "val_fraction": 0.15,
+  "test_fraction": 0.15,
+  "seed": 42,
+  "anchor_profiles": ["flat", "bad_wear", "stairs", "slope"],
+  "output_dir": "simulator/pinn/training_data",
+  "_corpus_tier": "PUBLIC",
+  "_private_distributions": "simulator/pinn/data_config_private.json",
+  "_created_by": "synthetic-data-setter",
+  "_bill": "bill_data_config_v1",
+  "_date": "2026-04-03"
+}

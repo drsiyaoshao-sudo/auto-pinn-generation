@@ -103,7 +103,9 @@ The tier governs which LLM can retrieve it, and what can be forwarded upstream.
 |---|---|---|
 | `simulator/pinn/architecture.json` | PUBLIC | Topology metadata only (dims, activation) — no weights or formulas |
 | `simulator/pinn/train_config.json` | DERIVED-OK | λ values present but as scalars; opaque key rule applies when forwarding |
-| `simulator/pinn/data_config.json` | **PRIVATE** | Full parameter distributions with μ, σ per field — reveals population model |
+| `simulator/pinn/data_config_public.json` | PUBLIC | Counts, splits, terrain distribution, seed, anchor list — no per-field distributions |
+| `simulator/pinn/data_config_private.json` | **PRIVATE** | Per-field parameter distributions with μ, σ, amendment_15_doc — reveals population model |
+| `simulator/pinn/data_config.json` | **PRIVATE** | Legacy combined file — superseded by split; treat as PRIVATE until removed |
 
 ### Training Evidence & Outputs
 
@@ -113,7 +115,9 @@ The tier governs which LLM can retrieve it, and what can be forwarded upstream.
 | `simulator/pinn/checkpoints/*.pt` | **PRIVATE** | Model weights encode the private physics derivations implicitly |
 | `docs/gaitsense_code/pinn_registry.md` | DERIVED-OK | SHA-256 hashes + scalar metrics only |
 | `docs/executive_branch_document/plots/pinn_training/train_summary_v1.md` | DERIVED-OK | Scalar loss values + epoch counts — no formulas, no patient data |
-| `docs/executive_branch_document/plots/pinn_training/physics_review_v1.md` | **PRIVATE** | Contains λ·L per profile with formula context — reveals derivation structure |
+| `docs/executive_branch_document/plots/pinn_training/physics_review_vN.md` | **PRIVATE** | Full derivation trace with formula context — written by physics-reviewer Output A |
+| `simulator/pinn/physics_review_summary.json` | DERIVED-OK | Opaque scalar summary (w0/w1/w2) — written by physics-reviewer Output B; safe for cloud |
+| `simulator/pinn/physics_review_log.json` | DERIVED-OK | human_decision + bill_reviewed only — no formula values; read by pinn-executor precondition check |
 | `docs/executive_branch_document/plots/pinn_training/*.png` | DERIVED-OK | Visual summaries — no extractable raw data |
 | `docs/executive_branch_document/plots/*.png` | DERIVED-OK | Signal diagnostic plots — visual only |
 | `docs/executive_branch_document/plots/STEP2_ZEROCROSS_EVIDENCE.md` | DERIVED-OK | Timing measurements only — no patient identity |
@@ -229,10 +233,20 @@ Step 2 (cloud): write hash + scalar metrics to `pinn_registry.md` (DERIVED-OK)
 
 ---
 
-## Open Questions
+## Resolved Decisions (2026-04-04)
 
-1. **`physics_review_v1.md` reclassification:** Currently PRIVATE because it contains formula context alongside λ values. A stripped version (scalars only, no formula text) would be DERIVED-OK. The physics-reviewer agent should produce two outputs: a private full report and a derived-ok summary for cloud consumption.
+1. **`physics_review_vN.md` split — RESOLVED.**
+   physics-reviewer now produces two outputs:
+   - Output A (PRIVATE): full derivation trace → `docs/.../physics_review_vN.md`
+   - Output B (DERIVED-OK): opaque scalar summary → `simulator/pinn/physics_review_summary.json`
+   Cloud agents receive Output B only. Human reads Output A directly.
 
-2. **Checkpoint weights (`.pt`):** Classified PRIVATE because weights encode private physics implicitly. If model inversion is not a realistic threat in this context, reclassify to DERIVED-OK. Needs a decision before grid search begins (pinn-grid-controller will need to load weights).
+2. **Checkpoint weights (`.pt`) — RESOLVED: stay PRIVATE.**
+   Weights encode the private physics derivations implicitly. Remain local-only.
+   pinn-grid-controller loads weights on local LLM; cloud receives only scalar inference outputs.
 
-3. **`data_config.json` parameter distributions:** Currently PRIVATE. The terrain distribution (flat 60% / slope 20% / stairs 20%) is probably not sensitive — it's in `pinn_registry.md` already. Consider splitting into a public terrain-distribution summary and a private per-field distribution file.
+3. **`data_config.json` split — RESOLVED.**
+   Split into `data_config_public.json` (PUBLIC) and `data_config_private.json` (PRIVATE).
+   Public file: counts, splits, terrain distribution, seed, anchor list.
+   Private file: all per-field parameter distributions with μ, σ, amendment_15_doc.
+   Legacy `data_config.json` treated as PRIVATE until removed.

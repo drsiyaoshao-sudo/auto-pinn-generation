@@ -78,22 +78,39 @@ Confirm or reject the Bill before pinn-executor is invoked.
    - Panel 4: Weighted loss balance (λ·L for each term, each profile) — the key balance check
    - Use matplotlib Agg backend (headless). Save at 150 dpi.
 
-7. Write a machine-readable review record to `simulator/pinn/physics_review_log.json`:
+7. Write TWO output files — one private, one derived-ok. This is the corpus boundary.
+
+**Output A — PRIVATE full report** (`docs/executive_branch_document/plots/pinn_training/physics_review_vN.md`):
+Full derivation trace table, formula context, per-profile breakdown, balance ratios with formula references.
+Must not be forwarded to cloud LLM. Human reads this directly.
+
+**Output B — DERIVED-OK summary** (`simulator/pinn/physics_review_summary.json`):
+Scalar outputs only. Opaque weight keys. No formula text. No variable names that reveal derivation structure.
+Safe to forward to cloud LLM for constitutional balance reasoning.
+
 ```json
 {
   "date": "YYYY-MM-DD",
   "bill_reviewed": "bill_loss_weights_vN",
-  "profiles_checked": ["flat", "bad_wear", "stairs", "slope"],
-  "all_terms_traced": true/false,
-  "balance_ratio_ode_vel": <float>,
-  "balance_ratio_ode_phase": <float>,
-  "balance_ok": true/false,
-  "plot_path": "docs/executive_branch_document/plots/pinn_loss_derivation.png",
-  "human_decision": "PENDING"
+  "all_terms_traced": true,
+  "balance_ok": true,
+  "balance_ratio_w0_w1": <float>,
+  "balance_ratio_w0_w2": <float>,
+  "weighted_loss_means": {
+    "w0": <float>,
+    "w1": <float>,
+    "w2": <float>
+  },
+  "plot_path": "docs/executive_branch_document/plots/pinn_training/physics_balance_vN.png",
+  "human_decision": "PENDING",
+  "_key_map": "PRIVATE — w0=lambda_ode, w1=lambda_vel, w2=lambda_phase. Do not include in derived-ok output.",
+  "_corpus_tier": "DERIVED-OK"
 }
 ```
 
-8. Stop. Do not invoke `pinn-executor`. The human reads the table and plot, then decides.
+Write `physics_review_log.json` (used by pinn-executor precondition check) as a separate file containing only `human_decision` and `bill_reviewed` — no formula values.
+
+8. Stop. Do not invoke `pinn-executor`. The human reads Output A and the plot, then decides.
 
 ## What you do NOT do
 
@@ -107,7 +124,7 @@ Confirm or reject the Bill before pinn-executor is invoked.
 
 1. If any derivation trace shows a ✗ (mismatch between expected and actual value in loss), flag it prominently in the console output — but still complete the full table. The human decides whether the mismatch is acceptable.
 2. If the λ balance ratio is outside 0.1–10, flag it as IMBALANCED in the table — but do not stop early. Complete the full review.
-3. Update `physics_review_log.json` with `"human_decision": "APPROVED"` or `"REJECTED"` only when explicitly told by the human. You are not authorised to set this field autonomously.
+3. Update `physics_review_log.json` with `"human_decision": "APPROVED"` or `"REJECTED"` only when explicitly told by the human. You are not authorised to set this field autonomously. Never write formula values or λ variable names into `physics_review_log.json` — that file is readable by cloud agents via pinn-executor's precondition check; keep it to decision status only.
 4. Save the plot before printing the table — if plotting fails, report the error and print the table anyway (the table is the primary evidence; the plot is supporting).
 
 ## Escalation Triggers
