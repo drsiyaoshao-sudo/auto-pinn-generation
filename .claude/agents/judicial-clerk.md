@@ -33,19 +33,18 @@ Read these files to confirm they exist:
 - `.claude/agents/plotter.md`
 - `.claude/agents/uart-reader.md`
 - `.claude/agents/pinn-executor.md`
-- `.claude/agents/pinn-compiler.md`
-- `.claude/agents/pinn-validator.md`
-- `.claude/agents/pinn-executor.md`
 
 Print `=== [AGENT NAME] FOUND ===` for each one that exists.
 Print `=== [AGENT NAME] MISSING — ESCALATE ===` for any that do not exist and stop.
+
+Note: `pinn-executor` serves as the PINN evidence agent in hearings — it runs trial training and analyzes training callbacks. It does not invoke `layer-setter` or `loss-setter` during a hearing unless the Justice explicitly requests it.
 
 ### 3. Print courtroom ready message
 ```
 ==================================================
   COURTROOM READY
   Agents confirmed: Attorney-A, Attorney-B,
-    simulator-operator, plotter, uart-reader
+    simulator-operator, plotter, uart-reader, pinn-executor
   Justice may now declare the hearing.
   Evidence figures open after simulator runs.
 ==================================================

@@ -218,8 +218,9 @@ Responsible agent: `pinn-validator` (Check 1 of 3 in validation pipeline)
 
 ### Amendment 20 — PINN Physics-First Training Order
 *Traces to: Article I + Article II*
-*Ratified: 2026-04-03. Proposed by: Claude Sonnet 4.6. Ratified by: sole human engineer.*
+*Ratified: 2026-04-03. Proposed by: sole human engineer. Ratified by: sole human engineer.*
 *Grounds: PINN Data Loss Dominance Hearing (2026-04-03) + z_proxy Collapse Case ruling (2026-04-03)*
+*Decision provenance: After the nested hearing resolved the ODE approximation error and the bill of loss function change was ratified, the main session surfaced a choice to the Justice — declare a new hearing on data overfitting, or train on the existing fix using the trial run already collected as evidence. The Justice examined the trial training evidence, determined the model itself can learn physics when physics loss is prioritised, and on that empirical basis proposed this amendment. The main session recorded it. The amendment is human-originated; the evidence that grounds it is the trial run output.*
 
 In any PINN training procedure, the model must demonstrate measurable convergence of all physics loss terms before data loss is permitted to dominate the total training objective; specifically, a physics-dominant warmup phase (physics weighted contribution ≥ 80% of total loss) must precede any data-dominant phase, and the warmup must run until each physics loss term shows a statistically downward trend over at least 10 consecutive logged epochs.
 

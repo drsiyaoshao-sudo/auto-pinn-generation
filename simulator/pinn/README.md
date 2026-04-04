@@ -251,6 +251,8 @@ L_total = L_data + physics_ramp(epoch) × (λ_ODE·L_ODE + λ_vel·L_vel + λ_ph
 ```
 Physics ramp: linear 0→1 over `physics_loss_warmup_epochs` (prevents ODE gradients from dominating random initialisation).
 
+**Amendment 20 constraint:** The warmup phase must run until each of `l_ode`, `l_vel`, and `l_phase` shows a net downward trend over at least 10 consecutive logged epochs, and physics weighted contribution must be ≥ 80% of total loss during this phase. The data-dominant phase may not begin until this criterion is documented in the training log. `pinn-executor` enforces and logs the criterion; `pinn-compiler` documents the warmup schedule in the ratified Bill.
+
 ---
 
 ## Training Dataset
@@ -393,5 +395,6 @@ All design decisions in this workflow are governed by CLAUDE.md. Key constraints
 - **Amendment 17:** Loss weights derived from physics, locked by Bill before training
 - **Amendment 18:** Grid search boundary findings require Renode confirmation before Case Law
 - **Amendment 19:** PINN must reproduce all 4 anchor profiles within 15% peak error per axis before grid search
+- **Amendment 20:** Physics-dominant warmup (≥ 80% of total loss) must precede any data-dominant phase; each physics loss term (`l_ode`, `l_vel`, `l_phase`) must show a net downward trend over at least 10 consecutive logged epochs before the data phase begins; `pinn-executor` enforces and logs the transition criterion; warmup schedule locked in the ratified Bill (`pinn-compiler`). *Grounds: PINN Data Loss Dominance Hearing + z_proxy Collapse Case (2026-04-03).*
 
 Any change to loss weights, training config, or dataset parameters requires a new ratified Bill. No hardcoded values in any source file — all constants read from JSON config at runtime.
