@@ -14,7 +14,7 @@
 
 ---
 
-## The Problem
+## The Problem — The Communication Tax
 
 Hardware design has three systems with no shared epistemological model:
 
@@ -29,6 +29,23 @@ Manual handoffs between all three. A design decision made in simulation never re
 **The result:** A hardware team of 10 produces what an AI-augmented team of 1 should be able to produce — but the 1-person team has no paper trail, no cross-team synchronization, and no auditable evidence chain.
 
 Incumbent tools (Cadence, Synopsys, Altium, Windchill) track versions. They do not track *why* decisions were made or *what physical evidence* justified them. They have no epistemological model.
+
+### The Communication Tax
+
+The hidden cost in every hardware project is not compute, not tooling, not even engineering hours. It is the **communication tax** — the overhead every team pays to translate a decision made in one tool into a form another tool, team, or regulator can read.
+
+```
+Simulation result    →  manually written into spec doc
+Spec doc change      →  manually communicated to firmware team
+Firmware change      →  manually linked to compliance record
+Compliance record    →  manually reconstructed for regulatory submission
+```
+
+Every one of these handoffs is a place where information degrades, context is lost, and errors are introduced. This is not an engineering failure — it is a structural property of tools designed to be indispensable silos.
+
+**Legacy EDA and PLM vendors know this tax exists. They refuse to eliminate it because the tax is their business model.** Expensive consultants, complex integrations, and multi-year license lock-in are all downstream consequences of deliberate interoperability gaps. A customer who can move decisions seamlessly from simulation to compliance record has no need for the integration layer the vendor sells them.
+
+**Our goal is to liquidate this tax entirely.** The constitutional governance layer makes the translation step disappear: a Bill enacted in simulation *is* the spec change, *is* the compliance record, *is* the IP provenance entry — simultaneously, by construction. There is no handoff because there is no boundary to cross.
 
 ---
 
