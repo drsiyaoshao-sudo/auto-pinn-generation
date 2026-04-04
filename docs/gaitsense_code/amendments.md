@@ -213,3 +213,26 @@ Before a PINN model may be used for grid search, it must reproduce all 4 existin
 Expansion: The 15% fidelity threshold is physically derived, not tuned. The LSM6DS3TR-C accel sensitivity is 4.786×10⁻³ m/s²/LSB at ±16g. At peak heel-strike impact (~18 m/s²), one LSB = 0.027% of peak — far below 15%. The 15% bound is set by the PINN's ability to represent the signal shape, not by sensor quantisation. Physical interpretation: a PINN within 15% of the true peak on all 4 profiles has correctly learned the primitive-to-signal mapping for the known operating points. At 15% of the heel-strike acc_z peak (~18 m/s²): error = 2.7 m/s² — still above the 5.0 m/s² adaptive detection threshold, so step detection is unaffected at known profiles. A PINN that cannot reproduce the 4 known points within this threshold has not learned the physics and must not be trusted for extrapolation into unseen parameter regions.
 
 Responsible agent: `pinn-validator` (Check 1 of 3 in validation pipeline)
+
+---
+
+### Amendment 20 — PINN Physics-First Training Order
+*Traces to: Article I + Article II*
+*Ratified: 2026-04-03. Proposed by: Claude Sonnet 4.6. Ratified by: sole human engineer.*
+*Grounds: PINN Data Loss Dominance Hearing (2026-04-03) + z_proxy Collapse Case ruling (2026-04-03)*
+
+In any PINN training procedure, the model must demonstrate measurable convergence of all physics loss terms before data loss is permitted to dominate the total training objective; specifically, a physics-dominant warmup phase (physics weighted contribution ≥ 80% of total loss) must precede any data-dominant phase, and the warmup must run until each physics loss term shows a statistically downward trend over at least 10 consecutive logged epochs.
+
+Expansion: The PINN Data Loss Dominance Hearing (2026-04-03) established that a model trained data-first produces a function that interpolates the training distribution without learning the underlying ODE constraints. The z_proxy Collapse Case (2026-04-03) confirmed that even a structurally correct physics loss will not be learned if data gradients dominate before the physics manifold has been established in the weight space. The critical failure mode for clinical deployment is out-of-distribution gait: a patient whose cadence, step length, or vertical oscillation falls outside the training profiles. A model that learned data first will extrapolate along the data manifold — which has no physical constraint outside the training envelope. A model that learned physics first will extrapolate along the ODE manifold — which is grounded in the cadence, vertical oscillation, and step length primitives that hold for any walking human regardless of training coverage.
+
+Benjamin Franklin grounding: The v3 diagnostic run (100 epochs, lambda_ode × 768, no warmup) showed val_ode declining 48.66 → 43.72 over 30 epochs when physics was forced dominant from epoch 1 — the first measurable physics convergence across all training runs. All prior runs (v1, v2) that applied data fitting before physics had established a gradient direction produced a structural plateau in val_ode that 768× weight scaling could not recover. The convergence direction, once established by physics-first training, is a physical invariant; the weight scale is not.
+
+Jefferson grounding: In real deployment, the device will encounter walkers whose gait primitives were not in the training set — post-surgical patients, elderly users with shortened step length, pathological gait with asymmetric cadence. The PINN is the surrogate for grid search at those unseen parameter points. A data-first PINN extrapolates with data artefacts at unseen points; a physics-first PINN extrapolates with ODE constraints that apply universally. The patient outcome depends on the PINN being correct at the point the patient actually occupies — not at the points that happened to be in the training set.
+
+Operational definition: A training run satisfies Amendment 20 if:
+1. The first phase (warmup) runs with physics weighted contribution ≥ 80% of total loss from epoch 1.
+2. Each physics loss term (l_ode, l_vel, l_phase) shows a net downward trend over the first 10 logged epochs of the warmup phase.
+3. The data loss phase (reduced physics weight or increased data weight) begins only after criterion 2 is satisfied and documented in the training log.
+4. The warmup phase duration and physics weight schedule are set in the ratified Bill for that training run (Amendment 17 applies to all weight values).
+
+Responsible agent: `pinn-compiler` (documents warmup schedule in Bill), `pinn-executor` (enforces and logs criterion 2 before transitioning phases)

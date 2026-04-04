@@ -135,6 +135,17 @@ def main():
     model = PINNModel().to(device)
     print(f"Model parameters: {model.count_parameters():,}")
 
+    # ── Checkpoint warm-start ─────────────────────────────────────────────────
+    load_ckpt = cfg.get("load_checkpoint")
+    if load_ckpt:
+        load_path = _repo_root / load_ckpt
+        if load_path.exists():
+            state = torch.load(load_path, map_location=device)
+            model.load_state_dict(state)
+            print(f"Warm-start: loaded weights from {load_path}")
+        else:
+            print(f"[WARNING] load_checkpoint path not found: {load_path} — starting from scratch")
+
     # ── Optimizer and Scheduler ───────────────────────────────────────────────
     optimizer = torch.optim.Adam(model.parameters(), lr=lr_initial)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
@@ -214,6 +225,7 @@ def main():
                 lambda_vel=lambda_vel,
                 lambda_phase=lambda_phase,
                 physics_weight_ramp=physics_weight,
+                t_steps=T_steps,
             )
 
             total_loss = loss_data + phys_dict["physics"]
@@ -285,6 +297,7 @@ def main():
             lambda_vel=lambda_vel,
             lambda_phase=lambda_phase,
             physics_weight_ramp=physics_weight,
+            t_steps=T_steps,
         )
 
         val_ode   = phys_val["l_ode"].item()

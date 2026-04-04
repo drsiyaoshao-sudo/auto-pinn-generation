@@ -1,0 +1,16 @@
+{
+  "run_id": "v3",
+  "status": "COMPLETED",
+  "total_epochs": 21,
+  "best_epoch": 15,
+  "best_val_loss": 4.899017959833145,
+  "final_val_total": 5.398353815078735,
+  "final_val_data": 0.6369850635528564,
+  "final_l_ode": 38.29779815673828,
+  "final_l_vel": 0.12857680022716522,
+  "final_l_phase": 0.0024694178719073534,
+  "loss_balance_ok": false,
+  "early_stop_fired": false,
+  "plot_path": "docs/executive_branch_document/plots/pinn_training/loss_curve_v3.png",
+  "human_decision": "PENDING"
+}

@@ -1,6 +1,7 @@
 """
 PINN Physics Loss — written by loss-setter agent.
 Bill reference: bill_loss_weights_v1.md
+Amendment: bill_physics_loss_v2.md — ratified 2026-04-03 by Justice
 
 Three physics loss terms, each algebraically traced to at least one
 of the three walking primitives (Article I, Amendment 17).
@@ -20,6 +21,15 @@ CRITICAL — autograd requirement for L_vel:
   graph. Using .detach() or .numpy() before this call produces a finite
   loss value with zero gradient — a silent training failure.
   An assert guard is included to catch this at runtime.
+
+CRITICAL — autograd requirement for L_ODE (bill_physics_loss_v2):
+  az_pred must remain an attached PyTorch tensor. z_pred is now computed
+  by true per-profile double-integration via torch.cumsum on the live
+  computation graph. The previous z_proxy approximation (d2z_dt2 / ω²)
+  caused algebraic cancellation: omega2 * (d2z_dt2/omega2) = d2z_dt2,
+  collapsing the residual to 2*d2z_dt2 - F_contact and eliminating
+  omega2 from the gradient path. bill_physics_loss_v2 mandates the
+  correct double-integration to restore the physics constraint.
 """
 
 import math
@@ -44,13 +54,14 @@ class PhysicsLoss(nn.Module):
     # ─────────────────────────────────────────────────────────────────
     def l_ode(
         self,
-        az_pred: torch.Tensor,      # (N,) predicted vertical acceleration [m/s²]
-        t:       torch.Tensor,      # (N,) normalised time [0,1]
-        cadence_spm:  torch.Tensor, # (N,) or scalar
-        vert_osc_cm:  torch.Tensor, # (N,) or scalar
-        step_period_s: torch.Tensor,# (N,) or scalar
+        az_pred: torch.Tensor,      # (B*T,) predicted vertical acceleration [m/s²]
+        t:       torch.Tensor,      # (B*T,) normalised time [0,1]
+        cadence_spm:  torch.Tensor, # (B*T,) or scalar
+        vert_osc_cm:  torch.Tensor, # (B*T,) or scalar
+        step_period_s: torch.Tensor,# (B*T,) or scalar
         G: float = 9.81,
         IMPACT_DURATION_S: float = 0.05,
+        t_steps: int = 100,
     ) -> torch.Tensor:
         """
         Derivation:
@@ -70,21 +81,35 @@ class PhysicsLoss(nn.Module):
             az_pred ≈ d²z/dt² + G  (sensor frame: gravity adds +G to az)
           So: d²z/dt² ≈ az_pred - G
 
+          z_pred is the true double-integral of d²z/dt² (bill_physics_loss_v2):
+            Per-profile double-integration: reshape (B*T,) → (B, T)
+            → cumsum for velocity → cumsum for displacement → reshape back.
+            Drift-corrected by subtracting the per-profile mean of z.
+
           Loss: mean((d²z_pred/dt² + ω²·z_pred - F_contact)²)
-          where z_pred is the double-integral of (az_pred - G),
-          approximated as az_pred - G normalised by ω² for stability.
+
+        AUTOGRAD REQUIREMENT: az_pred must have requires_grad=True.
+          torch.cumsum operates on the live computation graph.
+          Do NOT call .detach() or .numpy() before this function.
+          (bill_physics_loss_v2)
         """
+        assert az_pred.requires_grad, (
+            "l_ode autograd violation: az_pred.requires_grad is False. "
+            "Ensure az_pred is a slice of the live PINN output tensor. "
+            "See bill_physics_loss_v2."
+        )
+
         # ω² from cadence — traces to cadence_spm
-        omega2 = (2.0 * math.pi * cadence_spm / 60.0) ** 2   # rad²/s²
+        omega2 = (2.0 * math.pi * cadence_spm / 60.0) ** 2   # (B*T,) rad²/s²
 
         # Vertical acceleration component (remove gravity baseline)
-        d2z_dt2 = az_pred - G    # (N,)
+        d2z_dt2 = az_pred - G    # (B*T,)
 
         # F_contact: Gaussian impulse at t=0.025 (normalised), σ=0.05
         # hs_impact_ms2 traces to vertical_oscillation_cm
         vert_osc_m = vert_osc_cm / 100.0
         v_impact = torch.sqrt(torch.clamp(2.0 * G * vert_osc_m, min=1e-6))
-        hs_impact = v_impact / IMPACT_DURATION_S   # (N,) or scalar
+        hs_impact = v_impact / IMPACT_DURATION_S   # (B*T,) or scalar
 
         t_hs = 0.025   # normalised time of heel strike
         sigma_t = 0.05
@@ -92,10 +117,22 @@ class PhysicsLoss(nn.Module):
             -((t - t_hs) ** 2) / (2.0 * sigma_t ** 2)
         )
 
-        # Residual: d²z/dt² + ω²·(z_pred) - F_contact
-        # Use d2z_dt2 / ω² as a proxy for z_pred (dimensionally consistent approximation)
-        z_proxy = d2z_dt2 / (omega2 + 1e-6)
-        residual = d2z_dt2 + omega2 * z_proxy - F_contact
+        # Per-profile double-integration (bill_physics_loss_v2):
+        # reshape (B*T,) → (B, T), cumsum for velocity, cumsum for displacement,
+        # then reshape back. Physical dt per profile is step_period_s / (t_steps-1).
+        #
+        # This replaces the previous z_proxy = d2z_dt2 / (omega2 + 1e-6) which
+        # caused algebraic cancellation: omega2 * z_proxy = d2z_dt2, collapsing
+        # the residual to 2*d2z_dt2 - F_contact and removing omega2 from the loss.
+        dt = step_period_s.reshape(-1, t_steps)[:, 0:1] / (t_steps - 1)   # (B, 1) physical dt
+        d2z_mat = d2z_dt2.reshape(-1, t_steps)                              # (B, T)
+        v_z_mat = torch.cumsum(d2z_mat, dim=1) * dt                         # velocity (B, T)
+        z_mat   = torch.cumsum(v_z_mat,  dim=1) * dt                        # displacement (B, T)
+        z_mat   = z_mat - z_mat.mean(dim=1, keepdim=True)                   # drift correction
+        z_pred  = z_mat.reshape(-1)                                          # (B*T,)
+
+        # ODE residual — omega2 is now independent of d2z_dt2 in the gradient path
+        residual = d2z_dt2 + omega2 * z_pred - F_contact
 
         return torch.mean(residual ** 2)
 
@@ -205,6 +242,7 @@ class PhysicsLoss(nn.Module):
         lambda_vel:    float,
         lambda_phase:  float,
         physics_weight_ramp: float = 1.0,   # 0→1 during warmup epochs
+        t_steps: int = 100,                  # time steps per profile (bill_physics_loss_v2)
     ) -> dict:
         """
         Computes weighted sum of all three physics loss terms.
@@ -215,6 +253,9 @@ class PhysicsLoss(nn.Module):
             lambda_*:    — weights read from train_config.json at runtime
             physics_weight_ramp: 0.0 at epoch 0, 1.0 after physics_loss_warmup
                                  (linear ramp implemented by pinn-executor)
+            t_steps: number of time steps per profile; used by l_ode() for
+                     reshape into (B, T) for per-profile double-integration.
+                     Default 100 matches train_pinn.py T_steps. (bill_physics_loss_v2)
 
         Returns:
             dict with keys: total, l_ode, l_vel, l_phase, data_loss (placeholder)
@@ -223,7 +264,10 @@ class PhysicsLoss(nn.Module):
         az_pred = pred[:, 2]   # vertical accel
         gy_pred = pred[:, 4]   # gyr_y
 
-        loss_ode   = self.l_ode(az_pred, t, cadence_spm, vert_osc_cm, step_period_s)
+        loss_ode   = self.l_ode(
+            az_pred, t, cadence_spm, vert_osc_cm, step_period_s,
+            t_steps=t_steps,
+        )
         loss_vel   = self.l_vel(ax_pred, cadence_spm, step_length_m, step_period_s)
         loss_phase = self.l_phase(gy_pred, t, stance_frac)
 

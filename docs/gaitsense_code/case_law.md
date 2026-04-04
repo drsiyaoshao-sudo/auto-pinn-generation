@@ -130,3 +130,51 @@ Position A prevails. Option C is accepted. However, the shoe-dorsum mounting opt
 When an algorithm fix is accepted, the hardware alternative that was considered but not selected must be explicitly documented as an open option. Hardware iteration optionality survives algorithm success.
 
 **Files Changed:** `src/gait/step_detector.c`, `simulator/terrain_aware_step_detector.py`
+
+---
+
+### The z_proxy Collapse Case — 2026-04-03
+
+**Competing Positions:**
+- Position A (Amendment 14): The algebraic substitution `z_proxy = d2z_dt2 / ω²` is a valid simplification under dimensional analysis and reduces training instability by eliminating a poorly-conditioned double integration path. cadence_spm is still present in ω and the ODE residual retains physical grounding.
+- Position B (Article I + Amendment 14): The substitution `z_proxy = d2z_dt2 / ω²` algebraically collapses the ODE residual to `2×(az_pred - G) - F_contact = 0`, eliminating the `ω²·z` restoring term entirely. cadence_spm contributes zero gradient to the training loss. The resulting PINN does not enforce the spring-mass ODE — it enforces a static force balance that is not the governing equation of walking gait.
+
+**Physical/Empirical Basis:**
+The algebraic collapse `z_proxy = d2z_dt2 / ω²` substituted into the spring-mass ODE `d2z_dt2 + ω²·z = F_contact / m - G` yields:
+
+```
+d2z_dt2 + ω²·(d2z_dt2 / ω²) = F_contact / m - G
+d2z_dt2 + d2z_dt2 = F_contact / m - G
+2·d2z_dt2 = F_contact / m - G
+```
+
+The `ω²·z` restoring term cancels identically. cadence_spm, which enters only through ω, is multiplied by zero and contributes no gradient. Three training runs confirm that `val_ode` never converged: 190 epochs (v1), 500 epochs (v2), 100 epochs (v3 with 768× weight increase). The failure is structural — a zero-gradient path cannot be resolved by scaling weights or increasing epoch count.
+
+**Ruling:**
+Position B prevails. `z_proxy = d2z_dt2 / ω²` is a constitutionally impermissible simplification under Article I: cadence_spm (a first-order walking primitive) is rendered inert in the ODE residual, making the PINN training loss independent of the fundamental temporal frequency of gait. The three training runs constitute empirical confirmation under the Benjamin Franklin Principle that the failure is structural, not a weight-scale or epoch-count problem. The Thomas Jefferson Principle also governs: the `z` term in the true spring-mass ODE encodes vertical CoM oscillation frequency, which is the physical basis of step counting peak detection. A PINN enforcing the correct ODE produces `az` signals whose oscillatory structure is cadence-consistent, enabling reliable step count peak detection. A PINN trained on the collapsed residual produces `az` signals driven only by data fitting, whose peaks are data artefacts not physics-grounded — an unacceptable clinical output.
+
+**Precedent Effect:**
+No algebraic substitution that eliminates a walking primitive (cadence, vertical oscillation, or step length) from an ODE residual is permitted, regardless of dimensional correctness. A simplification that appears valid under dimensional analysis must be verified to preserve non-zero gradient contribution from all three walking primitives before it may be used in a PINN loss function. The correct implementation path is true double-integration of `(az_pred - G)` over time to obtain `z_pred(t)`, preserving the `ω²·z_pred` restoring term with cadence_spm as an active training signal. A new Bill is required before any implementation of the corrected `l_ode()` begins.
+
+**Files Changed:** No implementation — ruling prohibits the collapsed residual and requires a new Bill before `physics_loss.py` `l_ode()` is modified.
+
+---
+
+### The PINN Data Loss Dominance Case — 2026-04-03
+
+**Competing Positions:**
+- Position A (Amendment 14): Data loss dominance is expected and correct — the PINN should fit data first; physics constraints are secondary regularizers that gradually tighten the solution space. High data loss relative to physics loss at epoch 1 indicates the model is learning the training distribution, which is the prerequisite for any generalisation.
+- Position B (Article I + Amendment 14): Data loss dominance at epoch 1 indicates physics loss weight miscalibration. A PINN whose training signal is dominated by data fitting from the outset learns a function that interpolates data artefacts, not one that enforces the governing ODE. Physics must actively shape the function from epoch 1 — not regularize a data-fitted function post hoc.
+
+**Physical/Empirical Basis:**
+The v3 diagnostic training run (100 epochs, lambda_ode ×768, no physics warmup phase) was executed and its epoch-by-epoch loss table was recorded. `val_ode` declined from 48.66 (epoch 1) to 43.72 (epoch 30) — the first measurable downward trend in physics loss convergence across all three training runs: v1 (190 epochs, baseline lambda_ode) produced structural plateau in `val_ode`; v2 (500 epochs, intermediate lambda_ode increase) produced structural plateau in `val_ode`; v3 at ×768 weight produced the first confirmed physics convergence signal. The 768× weight amplification gave physics loss sufficient gradient magnitude to overcome data loss dominance and produce a measurable ODE residual reduction. This confirmed empirically that physics IS learnable when given gradient priority from epoch 1 — the prior plateau was not a model-capacity failure but a gradient-priority failure.
+
+The Justice's direction, verbatim: "we have to make sure the franklin principle prevails, i.e., the full system runs on physical primitives and pinn can know these primitives. Thus, a quick training session on very low data loss driven (<0.05) should be operated to check whether the model really learns physics before data kicks in."
+
+**Ruling:**
+Position B direction prevailed. The Justice ruled that the Benjamin Franklin Principle requires the full system to run on physical primitives, and the PINN must demonstrably learn those primitives before data fitting is permitted to dominate. The v3 empirical result — first-ever measurable physics convergence produced only when physics loss received gradient priority — constitutes the physical basis for the ruling. The Thomas Jefferson Principle also governs: a PINN that learns physics first will extrapolate along the ODE manifold at unseen parameter combinations (out-of-distribution patients in real deployment); a PINN that learns data first extrapolates data artefacts. Real patients occupy parameter points not in the training set — the manifold extrapolation property is the clinical outcome being protected. Physics-first training order is now constitutionally mandated by Amendment 20 (PINN Physics-First Training Order, ratified 2026-04-03). All future PINN training Bills must document a physics-dominant warmup phase (physics loss >= 80% of total loss) with verified downward trend in all three physics terms before the data-fitting phase begins.
+
+**Precedent Effect:**
+Any PINN training run that begins with data loss dominant (>50% of total loss at epoch 1) without a preceding physics-dominant warmup phase that satisfies Amendment 20 criterion 2 (verified downward trend in all three physics loss terms during warmup) is constitutionally invalid. A checkpoint produced by such a run is not eligible for use in pinn-validator, grid search, or any downstream clinical inference step. The physics warmup criterion must be documented as a passed exit gate in the training Bill before any checkpoint advances to the next pipeline stage.
+
+**Files Changed:** No implementation — ruling establishes the constitutional training order requirement. Amendment 20 is the operative rule. A new Bill is required before any training script is modified to implement the physics-first warmup phase.
