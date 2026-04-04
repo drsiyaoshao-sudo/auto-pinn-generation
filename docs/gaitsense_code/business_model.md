@@ -339,6 +339,76 @@ Each paper is also a product spec. Each product feature is also a research resul
 
 ---
 
+## Who We Need to Hire
+
+The architecture directly implies the team. Each hire closes a specific technical gap that currently relies on founder depth.
+
+### Founding Team Gaps (hire now)
+
+**RAG + Retrieval Engineer**
+- Owns the tier access control layer — the system that reads `contract.retrieves` and enforces PRIVATE/DERIVED-OK/PUBLIC at retrieval time automatically (currently manual discipline)
+- Builds the corpus indexing pipeline: chunking strategy for Bills, amendments, case law, and agent definitions; embedding model selection for constitutional text vs. physics derivations
+- Owns the opaque key masking implementation at the retrieval boundary
+- Profile: strong information retrieval background + systems engineering; ideally has worked on enterprise RAG where access control matters (not just demo RAG)
+
+**Model Distillation Engineer**
+- Owns the Tier 2 revenue pipeline: Sonnet teacher → small domain student, running on customer infrastructure
+- Defines the distillation curriculum from the governed training corpus (Bills + case law + validated physics = training signal with provenance)
+- Owns the benchmark: how do you know the student learned the physics, not noise? Connects directly to the physics-primitive enforcement (Article I is the distillation quality gate)
+- Profile: ML engineer with hands-on distillation experience (not just fine-tuning); ideally worked on edge deployment — RPi5 / nRF9160 target hardware context matters
+- Research upside: the "minimum local model size for physics-primitive enforcement" open question is a publishable result
+
+**Hardware Validation Engineer (BOM quality)**
+- Owns the CI/CD gate where enacted Bills trigger BOM diff validation
+- Examines BOM quality at each stage gate — component selection traces to the same physics primitives as the firmware (a sensor chosen for the wrong noise floor is an Article I violation)
+- Operates the virtual bench: oscilloscope SCPI, PPK2, J-Link RTT as first-class tool calls — the instrument API Standing Order needs a human who owns the bench
+- Cross-validates simulation outputs against physical hardware — the boundary between Renode and reality
+- Profile: embedded hardware engineer who is comfortable in both the lab and the CI/CD pipeline; MEMS/wearables or ASIC bring-up background preferred; this person is the bridge to every customer segment in the discovery map
+
+**PINN Domain Expert**
+- Guides the auto PINN generation pipeline — the governing question is whether the physics primitives generalize correctly to a new domain before the pipeline runs
+- Reviews physics_loss.py derivations before ratification (the physics-reviewer agent produces measurements; this person reads them and rules)
+- Owns domain expansion: when we enter MEMS or ASIC thermal modeling, this person defines the new first-order primitives and the Article I grounding for the new domain
+- Profile: PhD in applied physics, computational mechanics, or biomedical engineering with hands-on PINN experience; should have published on physics-informed ML or domain-specific neural architectures
+- Research upside: the "does Article I generalize across physical domains" question is the core paper — this person writes it
+
+---
+
+### Hiring Sequence
+
+```
+Now (pre-seed / YC)
+  Hardware Validation Engineer  ←  closes the customer discovery loop fastest;
+                                    every ASIC/MEMS conversation needs this person
+                                    in the room; owns the BOM CI/CD gate
+
+  PINN Domain Expert            ←  closes the research credibility gap;
+                                    auto PINN generation needs a named expert
+                                    to make the a16z technical partner comfortable
+
+Series A
+  RAG + Retrieval Engineer      ←  Tier 1 platform requires automated enforcement;
+                                    manual discipline does not scale past 3 customers
+
+  Distillation Engineer         ←  Tier 2 revenue requires a repeatable pipeline;
+                                    founder-run distillation does not scale
+```
+
+### Why the Architecture Implies the Team
+
+The four hires map exactly to the four technical moats:
+
+```
+RAG + Retrieval      →  moat #3: RAG tier structure + opaque key masking
+Distillation         →  moat #2: auto PINN pipeline + Tier 2 revenue
+HW Validation        →  moat #7: hybrid intelligence as entry barrier (bench side)
+PINN Domain Expert   →  moat #1: physics primitives enforcement + research credibility
+```
+
+No hire is speculative. Each one is load-bearing for a specific revenue tier or a specific moat. The governance system already defines what each person will do — the job descriptions are in the Standing Orders and the Amendment text.
+
+---
+
 ## The Pitch in Three Sentences
 
 Hardware design is broken because physics, process, and IP record are three separate systems with no shared model of truth. We built the governance layer that collapses all three — enforced by hybrid intelligence where local models protect the IP and cloud models validate the process. The result is an AI research platform where agents act as evidence probes, humans remain the decision authority, and every design choice is simultaneously an IP record, a compliance artifact, and a research data point.
