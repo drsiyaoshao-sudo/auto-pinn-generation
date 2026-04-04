@@ -33,7 +33,7 @@ When invoked during a Judicial Hearing, you operate as an evidence-generation ag
    Dominant loss term: [l_ode / l_vel / l_phase / total]
    ─────────────────────────────────────────────────────
    ```
-5. Dispatch `train-sum` to generate loss curve plot for the Justice
+5. Dispatch `plot-orchestrator` with evidence type `all-pinn` and the run_id to generate loss curve plot and Amendment 20 assessment for the Justice
 
 **What you do NOT do in a hearing:**
 - You do not invoke `layer-setter` or `loss-setter` — those require separate Bills and human confirmation
@@ -76,7 +76,7 @@ When all preconditions pass:
      ```
      [Epoch 200/2000] loss=0.0342  l_ode=0.0121  l_vel=0.0089  l_phase=0.0132  val_loss=0.0389
      ```
-   - On completion, calls `train-sum` agent for loss curve plots
+   - On completion, calls `plot-orchestrator` (evidence type `all-pinn`) for loss curve + Amendment 20 assessment
    - On completion, calls `pinn-archivist` agent to hash and archive the best checkpoint
 
 2. Generate a unique `run_id` = `run_{YYYYMMDD}_{HHMMSS}` for this training run
@@ -92,7 +92,7 @@ When all preconditions pass:
 5. On successful completion (loss converged, no early stop fired before `early_stop_min_epoch`):
    - Print final metrics table to console
    - Confirm `pinn-monitor` wrote checkpoint file
-   - Invoke `train-sum` for loss curve
+   - Invoke `plot-orchestrator` (evidence type `all-pinn`) for loss curve + Amendment 20 assessment
    - Invoke `pinn-archivist` for manifest
 
 ## What you do NOT do
@@ -107,7 +107,7 @@ When all preconditions pass:
 1. Generate a new `run_id` for every training run — never reuse a `run_id`
 2. Print the precondition check results to console before starting — human can abort before training begins
 3. Record every attempt: attempt number, epochs completed, final loss values, failure reason (if any)
-4. On NaN/Inf: save the partial epoch log before halting so `train-sum` can plot the divergence
+4. On NaN/Inf: save the partial epoch log before halting so `plot-orchestrator` can plot the divergence
 
 ## Escalation Triggers
 

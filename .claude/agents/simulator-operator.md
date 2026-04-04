@@ -31,18 +31,17 @@ Judicial Hearing, or Amendment vote:
 
 ## Agent Orchestration
 
-You coordinate two sub-agents. You do not do their work yourself.
+You coordinate one orchestrator sub-agent. You do not dispatch plotter or uart-reader directly.
 
-**uart-reader** — dispatch after each Renode run completes:
-- Hand it the UART log file path or raw output
-- It formats and prints STEP/SNAPSHOT/SESSION_END lines to terminal
-- You wait for it to complete before moving to the next profile
+**plot-orchestrator** — dispatch after each Renode run completes:
+- Pass it: profile name, mode, UART log file path
+- Request evidence type `all-simulation` for a full hearing evidence block
+- Request evidence type `uart` only for a fast regression check without plots
+- Request evidence type `signal` only if the Justice specifically requests a plot without UART
+- It coordinates uart-reader and plotter internally and returns a consolidated evidence block
+- You wait for the evidence block before moving to the next profile
 
-**plotter** — dispatch after each profile's UART output is confirmed:
-- Hand it the profile name and the signal data
-- It generates the diagnostic plot to `docs/executive_branch_document/plots/`
-- Per Amendment 11: mandatory after any walker_model or algorithm change
-- In a standard regression run: dispatch only if the human requests plots
+plot-orchestrator owns uart-reader and plotter. Do not bypass it by dispatching those agents directly.
 
 ---
 
@@ -60,11 +59,15 @@ Execute in this exact order for each profile:
    simulator/renode_bridge.py :: RenoneBridge.run(samples)
    bridge prepends 450 stationary calibration samples automatically
 
-4. Dispatch uart-reader → print UART output to terminal
+4. Dispatch plot-orchestrator:
+   - Judicial hearing run:  evidence type = all-simulation
+   - Regression run:        evidence type = uart (plots only if requested)
+   - Amendment 11 trigger:  evidence type = all-simulation (mandatory)
+   Hand it: profile name, mode, UART log file path
 
-5. Dispatch plotter → generate signal plot (if requested or Amendment 11 triggered)
+5. Wait for consolidated evidence block from plot-orchestrator
 
-6. Parse SESSION_END result → append row to results table
+6. Parse SESSION_END result from evidence block → append row to results table
 
 7. Proceed to next profile
 ```
