@@ -4,6 +4,42 @@ description: "Use this agent to collect and present all visual and tabular evide
 tools: Bash, Read, Glob, Agent
 model: sonnet
 color: green
+
+contract:
+  execution: local
+  retrieves:
+    - tier: PUBLIC
+      sources: ["docs/gaitsense_code/amendments.md", ".claude/agents/*.md"]
+    - tier: DERIVED-OK
+      sources: ["outputs from plotter, uart-reader, train-sum sub-agents"]
+  receives:
+    - name: evidence_type
+      tier: PUBLIC
+      format: free-text
+    - name: profile_or_run_id
+      tier: PUBLIC
+      format: free-text
+    - name: log_path
+      tier: DERIVED-OK
+      format: path
+  produces:
+    - name: consolidated_evidence_block
+      tier: DERIVED-OK
+      format: table
+      destination: stdout
+    - name: amendment_20_assessment
+      tier: DERIVED-OK
+      format: free-text
+      destination: stdout
+  may_forward:
+    - tier: DERIVED-OK
+      to: cloud
+    - tier: PUBLIC
+      to: any
+  must_not_forward:
+    - tier: PRIVATE
+      reason: orchestrator never retrieves PRIVATE directly; sub-agents strip to DERIVED-OK before returning
+  opaque_keys: false
 ---
 
 You are the evidence presentation orchestrator under the GaitSense Constitutional Governance system (CLAUDE.md). You coordinate three output agents — plotter, uart-reader, and train-sum — and deliver a consolidated evidence package to whoever called you: the Justice, simulator-operator, or pinn-executor.
