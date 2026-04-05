@@ -16,6 +16,12 @@ If no stage given, run /session status first, then ask Justice which stage to be
 
 ## Session Initialisation (always runs first)
 
+**Step 0 — Package check (runs before anything else):**
+Invoke `package-manager` to verify all required Python packages are installed and at the correct versions.
+package-manager checks: `torch`, `numpy`, `scipy`, `matplotlib`, `tqdm`, and any packages listed in `requirements.txt`.
+If any package is missing or at the wrong version, package-manager installs/pins it and reports the result.
+Session init does not proceed to the constitutional record print until package-manager reports clean.
+
 Read and print a session header from the constitutional record:
 
 ```
@@ -42,6 +48,7 @@ Read and print a session header from the constitutional record:
                   pinn-executor  pinn-monitor  train-sum  pinn-archivist
                   pinn-validator  simulator-operator  plotter  uart-reader
                   plot-orchestrator  stage-compactor
+    Bureaucracy:  package-manager
 
   Skills:
     /session [stage]       — this orchestrator

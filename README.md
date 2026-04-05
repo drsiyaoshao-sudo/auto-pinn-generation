@@ -117,6 +117,7 @@ Full lesson: [`docs/gaitsense_code/lesson_nine_run_diagnostic.md`](docs/gaitsens
 | **Legislature** | `synthetic-data-setter` `loss-setter` `pinn-compiler` `pinn-grid-controller` `fw-generator` |
 | **Judiciary** | `judicial-clerk` `attorney-A` `attorney-B` |
 | **Executive** | `synthetic-data-generator` `layer-setter` `physics-reviewer` `pinn-executor` `pinn-monitor` `train-sum` `pinn-archivist` `pinn-validator` `simulator-operator` `plotter` `uart-reader` `plot-orchestrator` `stage-compactor` |
+| **Bureaucracy** | `package-manager` — runs at session start, checks/installs all Python dependencies |
 
 **Rule:** Every agent has a designated scope. Do not ask Claude to implement tasks that belong
 to a specific agent — invoke the agent instead. This is documented in
