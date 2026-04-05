@@ -352,3 +352,114 @@ Two items remain:
 ### Current Standing
 
 The method is **provisionally validated as of 2026-04-03.** The governance mechanism, the agentic patterns, and the constitutional record-keeping all work correctly and have been demonstrated under real development conditions — not scripted. Two criteria remain because they require production runs and physical hardware, not because the method has gaps.
+
+---
+
+## Part 5 — Lessons from the 2026-04-05 Session (v10–v21, ~2 hours)
+
+*Session demonstrated: auto-PINN concept valid for non-linear gait signal (3/4 anchor profiles PASS).  
+Full lesson records: [`lesson_nine_run_diagnostic.md`](lesson_nine_run_diagnostic.md) and [`lesson_code_pasta_prevention.md`](lesson_code_pasta_prevention.md)*
+
+---
+
+### 5.1 — The Nine-Run Diagnostic Arc: What Must Not Repeat
+
+Nine consecutive training runs failed (v10–v19) before the root cause was understood.
+The failure stack was three layers deep, and each run surfaced only one layer:
+
+```
+  ┌────────────────────────────────────────────────────────────────┐
+  │  FAILURE STACK — discovered run-by-run across 2 hours         │
+  ├────────────────────────────────────────────────────────────────┤
+  │                                                                │
+  │  Layer 3 — WRONG PHYSICS MODEL                                 │
+  │  Spring-mass ODE inconsistent with walker_model empirical      │
+  │  equations. ODE residual on TRUE data > residual on az=0.      │
+  │  Physics constraint pulled weights AWAY from the data.         │
+  │  → L_ODE and L_vel removed (bill_physics_loss_v6)              │
+  │                                                                │
+  │  Layer 2 — WRONG EMBEDDING BASIS                               │
+  │  Raw t scalar in 2-layer MLP → function class ≈ linear in t.  │
+  │  Model predicted monotonic ramp (gy range: ±0.4 dps).          │
+  │  → Chebyshev T₁–T₅ on step-normalised t (bill_architecture_v21a)│
+  │                                                                │
+  │  Layer 1 — WRONG CAPACITY REASONING                            │
+  │  Overfitting measured against N_profiles × T_steps (72,800)    │
+  │  not N_independent_profiles (350). 330k params → catastrophic. │
+  │  → Amendment 21 mandates params ≤ 0.1 × N_profiles             │
+  │                                                                │
+  └────────────────────────────────────────────────────────────────┘
+```
+
+**Amendment 21 (ratified 2026-04-05) makes this checklist mandatory before any training run.**
+If it had existed before v10, the nine-run arc would have been one run.
+
+**Items to fix before next demo session:**
+
+- [ ] Run Amendment 21 checklist at training session start — physics diagnostic, embedding frequency check, capacity check — before any config is written
+- [ ] `pinn-compiler` must enforce the capacity check as a hard gate (not advisory)
+- [ ] `loss-setter` must run the physics residual diagnostic (residual on true data vs residual on zero baseline) as a mandatory output before proposing any physics loss term
+- [ ] Add stairs oversampling to `data_config.json` — stairs failure in v21 is a data coverage issue, not an architecture failure
+
+---
+
+### 5.2 — Code Pasta: Items to Fix in the Next Session
+
+This session generated ad-hoc intermediate code that is not connected to the agent infrastructure and cannot be reused.
+
+**Files that are temporary placeholders (not canonical):**
+
+| File | Status | Replace with |
+|------|--------|-------------|
+| `simulator/pinn/plot_v20_gy.py` | Throwaway | Standard `plot_step_unit.py` callable by `plot-orchestrator` |
+| `simulator/pinn/run_v20_anchor_sim.py` | Throwaway | Standard `evaluate_anchor.py` callable by `simulator-operator` |
+
+**Process failures that generated the pasta:**
+
+| Task | How done (wrong) | How to do it |
+|------|-----------------|-------------|
+| Neural architecture change | Main session edited `pinn_model.py` directly | Invoke `layer-setter` |
+| Hyperparameter config | Main session edited `train_config.json` directly | Invoke `pinn-compiler` |
+| Training run | Main session ran `python -m simulator.pinn.train_pinn` | Invoke `pinn-executor` |
+| Simulation on anchor profiles | Main session wrote and ran `run_v20_anchor_sim.py` | Invoke `simulator-operator` |
+
+**Standard code modules needed before next session (user to build):**
+
+```
+simulator/pinn/inference.py         — load checkpoint + forward pass, any N profiles
+simulator/pinn/evaluate_anchor.py   — 4 anchor profiles → step counts + SI
+simulator/pinn/plot_step_unit.py    — gy + az step plot for any checkpoint
+simulator/pinn/threshold_adapter.py — derive PINN-adapted gait algorithm thresholds
+```
+
+**Rule for next session:** If a task matches an agent's scope, invoke the agent. Do not write code for it. Do not run inline Python longer than 3 lines via Bash.
+
+---
+
+### 5.3 — What the 2026-04-05 Session Proved (Two Hours, Non-Linear Case)
+
+```
+  ┌────────────────────────────────────────────────────────────────┐
+  │  AUTO-PINN CONCEPT: VALIDATED                                  │
+  │                                                                │
+  │  Input:  WalkerProfile conditioning vector (10 features)       │
+  │  Model:  Chebyshev T₁–T₅ embedding + 4-layer MLP (1174 params)│
+  │  Output: One canonical gait step (208 samples × 6 channels)    │
+  │                                                                │
+  │  Assembly: tile 200 steps → prepend stationary prefix          │
+  │  → run gait detection algorithm                                │
+  │                                                                │
+  │  Result (v21, 500 epochs, pure data MSE):                      │
+  │    flat    200/200 steps  SI=0.00%  ✓ PASS                    │
+  │    bad_wear 200/200 steps SI=0.04%  ✓ PASS                    │
+  │    slope   200/200 steps  SI=0.00%  ✓ PASS                    │
+  │    stairs  0/200 steps    —         ✗ FAIL (data coverage)     │
+  │                                                                │
+  │  Key: even a non-linear biomechanical signal (gait) is         │
+  │  learnable with the right basis. Stairs failure is a data      │
+  │  problem, not an architecture problem.                         │
+  └────────────────────────────────────────────────────────────────┘
+```
+
+This advances the Stage 2 (Software/PINN) ratification criterion. The concept is working.
+Production run + validation pipeline remain to close the stage gate.
