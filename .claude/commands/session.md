@@ -77,6 +77,17 @@ Stage 1 is the starting point. ELF must exist at the path expected by simulator-
     simulator-operator (si_true=25%) → SI > 10% required
 ```
 
+### Parallel data generation (efficiency)
+Stage 1 simulation (Renode/ELF) and Stage 2 Phase 1 (synthetic data generation from
+walker_model.py) share no dependencies. As soon as Stage 1 begins:
+
+- Invoke `synthetic-data-setter` in parallel with simulator-operator
+- If the dataset Bill is ratified before Stage 1 closes, invoke `synthetic-data-generator`
+  immediately — do not wait for Gate S1
+- Stage 2 training still requires Stage 1 CLOSED, but data will be ready the moment it is
+
+Print when parallel data gen begins: `[PARALLEL] synthetic-data-setter running alongside Stage 1 simulation.`
+
 ### Exit criteria
 - All 4 healthy profiles: ≥ 98/100 steps, SI < 10%
 - Pathological: SI > 10%
@@ -115,12 +126,20 @@ Stage 2 closed. Validated PINN checkpoint in pinn-archivist manifest.
 
 ### Pipeline
 ```
-  1. pinn-grid-controller proposes search domain Bills
+  1. pinn-grid-controller proposes all search domain Bills in one pass
      (each domain: axis name, physical justification, clinical hypothesis, Renode assertion)
 
-  2. [/hear per domain] — Justice ratifies each domain separately
+  2. Batch ratification session — one /hear covers all proposed domains:
+       judicial-clerk warms courtroom once
+       attorney-A argues for the full domain set (physical justification per domain)
+       attorney-B challenges the weakest-justified domains
+       Justice rules on each domain individually — one ruling entry per domain in case_law.md
+       One courtroom warm-up, one evidence pass, N rulings
 
-  3. pinn-executor: batch PINN inference across domain grid
+     Note: if any domain produces an amendment conflict, that domain is separated into
+     its own standalone /hear before the batch continues.
+
+  3. pinn-executor: batch PINN inference across all ratified domains simultaneously
      → boundary candidates where algorithm fails
 
   4. simulator-operator (Renode): confirms each candidate
@@ -220,21 +239,24 @@ Constitutional method validated end-to-end.
 ```
   /session
       │
-      ├── [SESSION INIT] constitutional record · stage status · agent roster
+      ├── [SESSION INIT] package-manager · constitutional record · stage status · agent roster
       │
-      ├── Stage 1 ── Firmware Simulation
-      │               simulator-operator × 4 profiles + pathological
-      │               uart-reader · plotter
-      │               [GATE S1] → stage-compactor
+      ├── Stage 1 ── Firmware Simulation          ┐ parallel
+      │               simulator-operator × 4      │
+      │               uart-reader · plotter        ├── synthetic-data-setter (Phase 1 early start)
+      │               [GATE S1] → stage-compactor ┘   → synthetic-data-generator (if Bill ratified)
       │
       ├── Stage 2 ── PINN Training          ← /model-train
       │               [Amendment 21 pre-flight]
-      │               data · design · compile · train · archive · validate
+      │               [data — may already be ready from parallel run]
+      │               design (layer-setter ∥ loss-setter) · physics-reviewer
+      │               compile · [canary 20 epochs] · train · archive+validate
       │               [GATE S2] → stage-compactor
       │
       ├── Stage 3 ── Grid Search
-      │               pinn-grid-controller → [/hear × domains]
-      │               pinn-executor (batch) · simulator-operator (Renode)
+      │               pinn-grid-controller (all domains in one pass)
+      │               → [/hear batch ratification — one courtroom, N rulings]
+      │               → pinn-executor (batch) · simulator-operator (Renode)
       │               [GATE S3] → stage-compactor
       │
       ├── Stage 4 ── Edge Cases
