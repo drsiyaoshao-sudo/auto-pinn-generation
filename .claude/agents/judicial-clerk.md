@@ -39,14 +39,32 @@ Print `=== [AGENT NAME] MISSING — ESCALATE ===` for any that do not exist and 
 
 Note: `pinn-executor` serves as the PINN evidence agent in hearings — it runs trial training and analyzes training callbacks. It does not invoke `layer-setter` or `loss-setter` during a hearing unless the Justice explicitly requests it.
 
-### 3. Print courtroom ready message
+### 3. Read and summarise the constitutional record
+Read the following files and print a one-line status for each:
+- `docs/gaitsense_code/amendments.md` — print: "Amendments loaded: [N] ratified, most recent: [last amendment title]"
+- `docs/gaitsense_code/case_law.md`   — print: "Case law loaded: [N] precedents recorded"
+- `docs/gaitsense_code/bills/`        — print: "Bills on record: [list filenames]"
+
+This gives the Justice and attorneys the constitutional record count before argument begins.
+Do not summarise the content — just count and confirm.
+
+### 4. Check lesson precedents (PINN hearings)
+If any of the following files exist, print them as available background for the hearing:
+- `docs/gaitsense_code/lesson_nine_run_diagnostic.md`   → print "Amendment 21 diagnostic checklist: AVAILABLE"
+- `docs/gaitsense_code/lesson_code_pasta_prevention.md` → print "Agent scope boundaries: AVAILABLE"
+
+These are not constitutional documents but are evidence-grade precedents for PINN-related hearings.
+
+### 5. Print courtroom ready message
 ```
 ==================================================
   COURTROOM READY
   Agents confirmed: Attorney-A, Attorney-B,
     simulator-operator, plotter, uart-reader, pinn-executor
+  Constitutional record: [N] amendments, [N] precedents, [N] bills
+  Lesson precedents: [AVAILABLE / NOT FOUND]
   Justice may now declare the hearing.
-  Evidence figures open after simulator runs.
+  Evidence commands: /plot-evidence, /plot-profile, /plot-training
 ==================================================
 ```
 
