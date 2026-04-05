@@ -190,51 +190,39 @@ class PhysicsLoss(nn.Module):
     # ─────────────────────────────────────────────────────────────────
     def l_phase(
         self,
-        gy_pred:       torch.Tensor,  # (N,) predicted gyr_y [dps]
-        t:             torch.Tensor,  # (N,) normalised time [0,1]
-        stance_frac:   torch.Tensor,  # (N,) or scalar [dimensionless]
+        gy_pred:     torch.Tensor,  # (N,) predicted gyr_y [dps]
+        t:           torch.Tensor,  # (N,) normalised time [0,1]
+        stance_frac: torch.Tensor,  # (N,) [dimensionless]
     ) -> torch.Tensor:
         """
-        Derivation:
-          Physiological 60/40 stance/swing split (Amendment 15 documented constant).
-          step_period_s = 60 / cadence_spm   [traces to cadence_spm]
-          stance_frac from WalkerProfile (0.60 flat, 0.62 slope, 0.65 stairs).
+        Derivation (bill_physics_loss_v5 — reverts bill_physics_loss_v4):
+          Two enforcement terms:
 
-          The phase constraint: gyr_y should be negative (dorsiflexion) during
-          stance (t < stance_frac) and negative or near-zero during swing
-          (t > stance_frac). Push-off peak occurs at t ≈ 0.85–0.95 of stance.
+          1. Stance sign hinge:
+             mean(gy_pred[stance]) < 0 — dorsiflexion dominant during stance.
+             Traces to cadence_spm via stance_frac (proportion of step_period in stance).
 
-          Soft constraint: at the stance/swing boundary (t ≈ stance_frac),
-          gyr_y should cross zero (foot lifts off).
+          2. Boundary zero-crossing:
+             gy_pred ≈ 0 at t ≈ stance_frac — lift-off transition.
+             Traces to cadence_spm (step_period determines stance/swing boundary timing).
 
-          Loss: penalise predicted gyr_y at t > stance_frac being > 0
-          (foot should not be plantarflexing after lift-off, except push-off).
+          Amplitude enforcement (bill_physics_loss_v4) removed — wrong formula, conflicts data.
+          Boundary zero-crossing removed — ground truth gyr_y at t=stance_frac is −25 dps
+          (not 0): walker_model waveform does not zero-cross at lift-off. Boundary constraint
+          forced network to predict gy≈0 at boundary while data had −25 dps → loss conflict.
+          (bill_physics_loss_v5, 2026-04-05)
 
-          Simplified implementation: enforce mean(gy_pred[t < stance_frac]) < 0
-          and mean(gy_pred[t > stance_frac]) sign is unconstrained (swing varies).
-          Use soft hinge loss on the stance-phase mean.
+          Only remaining term: stance sign hinge. Traces to Article I (cadence_spm determines
+          stance_frac proportion). Soft safety net — ensures gyr_y is negative during stance.
         """
-        # Stance mask: t < stance_frac
-        stance_mask = (t < stance_frac).float()   # (N,)
+        # ── Stance sign hinge ─────────────────────────────────────────────────
+        # mean(gy_pred[stance]) < 0 — dorsiflexion dominant during stance
+        stance_mask = (t < stance_frac).float()
         n_stance = stance_mask.sum() + 1e-6
-
-        # Mean gyr_y during stance — should be dominated by negative values
-        # (dorsiflexion and ankle rocker)
         mean_gy_stance = (gy_pred * stance_mask).sum() / n_stance
-
-        # Soft constraint: penalise if mean stance gyr_y is positive
-        # (expected: negative, ~-20 to -40 dps during stance)
-        # Target: mean_gy_stance < 0 → hinge: max(0, mean_gy_stance)²
         stance_violation = torch.clamp(mean_gy_stance, min=0.0) ** 2
 
-        # Boundary loss: at t = stance_frac, gyr_y ≈ 0 (lift-off transition)
-        # Find samples closest to stance_frac boundary
-        boundary_mask = (torch.abs(t - stance_frac) < 0.05).float()
-        n_boundary = boundary_mask.sum() + 1e-6
-        mean_gy_boundary = (gy_pred * boundary_mask).sum() / n_boundary
-        boundary_loss = mean_gy_boundary ** 2   # should be near zero
-
-        return stance_violation + 0.5 * boundary_loss
+        return stance_violation
 
     # ─────────────────────────────────────────────────────────────────
     # Total Loss

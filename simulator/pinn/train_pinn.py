@@ -106,23 +106,62 @@ def main():
     print(f"Device: {device}")
 
     # ── Load data ────────────────────────────────────────────────────────────
-    X_train = torch.from_numpy(np.load(data_dir / "X_train.npy")).float().to(device)
-    Y_train = torch.from_numpy(np.load(data_dir / "Y_train.npy")).float().to(device)
-    t_train = torch.from_numpy(np.load(data_dir / "t_train.npy")).float().to(device)
+    X_train_raw = torch.from_numpy(np.load(data_dir / "X_train.npy")).float().to(device)
+    Y_train_raw = torch.from_numpy(np.load(data_dir / "Y_train.npy")).float().to(device)
+    t_train     = torch.from_numpy(np.load(data_dir / "t_train.npy")).float().to(device)
 
-    X_val   = torch.from_numpy(np.load(data_dir / "X_val.npy")).float().to(device)
-    Y_val   = torch.from_numpy(np.load(data_dir / "Y_val.npy")).float().to(device)
-    t_val   = torch.from_numpy(np.load(data_dir / "t_val.npy")).float().to(device)
+    X_val_raw   = torch.from_numpy(np.load(data_dir / "X_val.npy")).float().to(device)
+    Y_val_raw   = torch.from_numpy(np.load(data_dir / "Y_val.npy")).float().to(device)
+    t_val       = torch.from_numpy(np.load(data_dir / "t_val.npy")).float().to(device)
+
+    # ── Optional train/val swap (keep anchors in val) ────────────────────────
+    # Val set layout: [0..N_val_random-1] random profiles, [N_val_random..] anchors.
+    # When swap_train_val=true: train becomes the original random-val profiles,
+    # val becomes original train profiles + anchors.
+    # Anchors (last 4 entries of val_raw) always stay in val.
+    N_ANCHORS = 4
+    swap_train_val = cfg.get("swap_train_val", False)
+    if swap_train_val:
+        N_val_random = X_val_raw.shape[0] - N_ANCHORS
+        X_val_anchors = X_val_raw[N_val_random:]
+        Y_val_anchors = Y_val_raw[N_val_random:]
+        X_train = X_val_raw[:N_val_random]     # 75 random-val → new train
+        Y_train = Y_val_raw[:N_val_random]
+        X_val   = torch.cat([X_train_raw, X_val_anchors], dim=0)   # 350 + 4 → new val
+        Y_val   = torch.cat([Y_train_raw, Y_val_anchors], dim=0)
+        print(f"[swap_train_val] train={X_train.shape[0]} (was val-random)  val={X_val.shape[0]} (was train+anchors)")
+    else:
+        X_train, Y_train = X_train_raw, Y_train_raw
+        X_val,   Y_val   = X_val_raw,   Y_val_raw
 
     N_train, T_steps, out_dim = Y_train.shape
     N_val   = Y_val.shape[0]
 
+    # ── Per-channel output normalisation (computed from training set) ────────
+    # Balances the data loss across channels. gy_dps std=57 vs az_ms2 std=5.7 —
+    # without normalisation gy dominates MSE by ~100×, destabilising training.
+    # Channels with std≈0 (ay, gx, gz always zero) get std_safe=1.0 to avoid /0.
+    # Model predicts in normalised space; denormalise for inference.
+    # Normalization stats are saved so pinn-validator can denormalise predictions.
+    Y_flat_train = Y_train.reshape(-1, out_dim)
+    Y_mean = Y_flat_train.mean(dim=0)                              # (6,)
+    Y_std  = Y_flat_train.std(dim=0)                               # (6,)
+    Y_std_safe = torch.where(Y_std < 1e-3, torch.ones_like(Y_std), Y_std)
+
+    # Save normalisation stats for inference denormalisation
+    np.save(ckpt_dir / f"Y_norm_stats_{run_id}.npy",
+            torch.stack([Y_mean, Y_std_safe]).cpu().numpy())
+
+    Y_train_norm = (Y_train - Y_mean) / Y_std_safe   # (N, T, 6)
+    Y_val_norm   = (Y_val   - Y_mean) / Y_std_safe   # (N, T, 6)
+
     print(f"Training samples: {N_train},  Val samples: {N_val},  Time steps: {T_steps},  Output dim: {out_dim}")
     print(f"Config: lr={lr_initial}, epochs={epochs_max}, batch={batch_size}, warmup={warmup_epochs}")
     print(f"Lambda: ode={lambda_ode}, vel={lambda_vel}, phase={lambda_phase}")
+    print(f"Y norm — mean: {Y_mean.cpu().numpy().round(2)}  std: {Y_std_safe.cpu().numpy().round(2)}")
 
     # ── DataLoader ───────────────────────────────────────────────────────────
-    train_dataset = TensorDataset(X_train, Y_train)
+    train_dataset = TensorDataset(X_train, Y_train_norm)
     train_loader  = DataLoader(
         train_dataset,
         batch_size=batch_size,
@@ -133,7 +172,20 @@ def main():
 
     # ── Model ─────────────────────────────────────────────────────────────────
     torch.manual_seed(seed)
-    model = PINNModel().to(device)
+    model_hidden_dim  = cfg.get("model_hidden_dim",  256)
+    model_fourier_dim = cfg.get("model_fourier_dim", 256)
+    model_n_layers    = cfg.get("model_n_layers",    4)
+    model_use_fourier = cfg.get("model_use_fourier", True)
+    model_use_cheby   = cfg.get("model_use_cheby",   False)
+    model_cheby_degree = cfg.get("model_cheby_degree", 5)
+    model = PINNModel(
+        hidden_dim=model_hidden_dim,
+        fourier_dim=model_fourier_dim,
+        n_layers=model_n_layers,
+        use_fourier=model_use_fourier,
+        use_cheby=model_use_cheby,
+        cheby_degree=model_cheby_degree,
+    ).to(device)
     print(f"Model parameters: {model.count_parameters():,}")
 
     # ── Checkpoint warm-start ─────────────────────────────────────────────────
@@ -148,7 +200,8 @@ def main():
             print(f"[WARNING] load_checkpoint path not found: {load_path} — starting from scratch")
 
     # ── Optimizer and Scheduler ───────────────────────────────────────────────
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr_initial)
+    weight_decay = cfg.get("weight_decay", 0.0)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr_initial, weight_decay=weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer,
         T_max=epochs_max,
@@ -260,7 +313,7 @@ def main():
             torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip_norm)
             optimizer.step()
 
-            epoch_loss_sum += total_loss.item()
+            epoch_loss_sum += loss_data.item()   # track train data loss separately
             n_batches      += 1
 
         scheduler.step()
@@ -279,7 +332,7 @@ def main():
         B_val     = N_val
         t_val_exp = t_val.unsqueeze(0).expand(B_val, -1).reshape(-1)
         X_val_exp = X_val.unsqueeze(1).expand(-1, T_steps, -1).reshape(-1, 10)
-        Y_val_flat = Y_val.reshape(-1, 6)
+        Y_val_flat = Y_val_norm.reshape(-1, 6)   # normalised target for MSE
 
         cadence_v     = X_val[:, 0]
         step_length_v = X_val[:, 1]
@@ -357,11 +410,12 @@ def main():
 
         if epoch % log_every == 0 or epoch == 1:
             elapsed = time.time() - train_start
+            train_data_avg = epoch_loss_sum / max(n_batches, 1)
             print(
                 f"Epoch {epoch:4d}/{epochs_max}"
-                f" | data={val_data:.4f}"
+                f" | tr={train_data_avg:.4f}"
+                f" | val={val_data:.4f}"
                 f" | ode={val_ode:.4f}"
-                f" | vel={val_vel:.4f}"
                 f" | phase={val_phase:.4f}"
                 f" | data_w={data_weight:.2f}"
                 f" | lr={current_lr:.2e}"

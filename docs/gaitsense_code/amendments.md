@@ -216,6 +216,63 @@ Responsible agent: `pinn-validator` (Check 1 of 3 in validation pipeline)
 
 ---
 
+### Amendment 21 — Data–Physics–Model Triad Alignment
+*Traces to: Article I + Article II*
+*Proposed by: Claude Sonnet 4.6 + sole human engineer (2026-04-05)*
+*Returned for revision: 2026-04-05 — two conditions from Justice: (a) spring-mass ODE is a wrong physical model, not a calibration issue; residual test is symptom check only. (b) Fourier embedding random B at σ=1.0 may not span the walking signal's frequency content — wrong basis blocks convergence regardless of other fixes.*
+*Ratified: 2026-04-05. Ratified by: sole human engineer.*
+*Evidence: v10–v19 nine consecutive failed training runs. ODE residual on true data 53–147 > residual on az=0 38.85. Train=0.47 vs val=1.89 overfitting from epoch 1 at 330k params / 350 profiles.*
+
+**Governing rule (one sentence):**
+Before any PINN training run is authorised, (1) every physics loss term must use a forward model that is the same governing equation as — or a verified consistent approximation of — the data-generating forward model, not a linearisation of it; (2) the network's input feature embedding must be verified to span the dominant frequency content of the target signal as derived from the walking primitives; and (3) the model trainable parameter count must not exceed one-tenth of the number of independent training samples.
+
+**Physical or process justification:**
+v10–v19 training runs (2026-04-05) produced zero convergent checkpoints across nine consecutive runs. Post-hoc analysis identified three independent causes — the residual test in the previous draft addressed only the symptom of Cause 1, not its root:
+
+*Cause 1 — Wrong physics model (root cause, not residual mismatch):*
+L_ODE enforced the linear spring-mass ODE: d²z/dt² + ω²z = F_contact. The walking signal produced by walker_model.py is not a linear oscillator. It contains:
+- An impulsive heel-strike modelled as a Gaussian impulse (sharp, non-linear in time)
+- An empirical push-off peak_angvel derived as (100 + 65×v_ms)×slope_factor (nonlinear in walking speed)
+- A toe-roll sigmoid for stairs (sigmoidal, not sinusoidal)
+
+The spring-mass ODE is a linearisation valid only for the slow CoM vertical oscillation component, not for the full acceleration signal. The empirical result confirms this: ODE residual on true data (53–147) > ODE residual on az=0 (38.85) — the data is MORE inconsistent with the linear ODE than a zero signal. The root cause is not a miscalibrated lambda or wrong warmup schedule; it is that the governing equation in physics_loss.py is a different physical model from the one in walker_model.py. No training procedure can reconcile this — the physics gradient and the data gradient point to structurally different solutions.
+
+The residual test (data residual ≤ zero-output residual) is a necessary but not sufficient condition. The sufficient condition is forward model consistency: the physics loss must enforce the same equations that the data generator solves, or a verified reduced-order model of it. If the data generator uses an empirical biomechanical model (as walker_model.py does), the physics loss must be derived from that same model's equations, not from a textbook linear oscillator.
+
+*Cause 2 — Fourier embedding frequency mismatch:*
+The PINNModel uses a Fourier Feature embedding with B ~ N(0, σ²I), σ=1.0, fourier_dim=256. The random frequencies in B are drawn blind to the actual frequency content of the walking signal. The walking signal has a dominant structure determined by Article I primitives: the fundamental oscillation frequency is cadence_spm/60 Hz (0.8–2.3 Hz), with biomechanical harmonics at integer multiples. For normalised time t ∈ [0,1] representing one step, the relevant Fourier modes are 1–10 cycles/step. The random B at σ=1.0 in the joint (X, t) space has no guarantee of covering these modes — and with a fixed random seed, if the modes are missed, the network has no representational capacity for the signal regardless of width, depth, weight decay, or regularisation. This is a basis mismatch: the model cannot express the function it is being asked to approximate. The correct approach is to set the Fourier frequencies from the cadence primitive range (Article I), not from a convention σ value.
+
+*Cause 3 — Model over-capacity relative to independent samples:*
+The 330,246-parameter model trained on 350 profiles showed train=0.47 vs val=1.89 from epoch 1. The effective independent sample count is the number of distinct WalkerProfile conditioning vectors (350), not the number of (profile, timestep) pairs (72,800), because all 208 timesteps within one profile share the same X conditioning vector and are not independent. Sizing model capacity against the timestep count overstates the effective dataset by T=208×, hiding over-capacity. The 1:10 rule (parameters ≤ 0.1 × independent profiles) is a conservative minimum floor.
+
+**Amendment it complements or constrains:**
+- Constrains Amendment 17 (loss weights must trace to physics): weights on a physics term are meaningless if the term enforces the wrong physical model. Amendment 21 is a prerequisite to Amendment 17 — the physics model must be right before its weights are tuned.
+- Constrains Amendment 20 (physics-first warmup): warmup on a wrong or basis-mismatched model steers weights into an opposing local minimum before data has any influence. Amendment 21 must pass before Amendment 20 can do useful work.
+- Traces to Article I: the Fourier embedding frequencies must derive from the cadence primitive (frequency of the dominant signal component), preserving the Article I derivation chain inside the model architecture itself.
+
+**What happens without it:**
+An agent can execute nine consecutive training runs with a physics loss enforcing a different physical model from the data generator, a Fourier basis that cannot represent the target signal, and a model 208× over-capacity — all while correctly following every other amendment. The failure is silent: training completes, a checkpoint is saved, and the pinn-validator is called on a model that was never capable of converging. Amendment 21 closes this gap with three pre-training checks that are each necessary and together sufficient to guarantee a convergence-capable training configuration.
+
+**Verification procedure (pre-training checklist — three items):**
+
+Item 1 — Forward model consistency check:
+The physics loss governing equations must be documented to derive from the same forward model as the data generator. For walker_model.py, this means: the physics loss for az must enforce the same Gaussian heel-strike + gravity model that walker_model.py uses (not the spring-mass ODE). The check is architectural, not numerical — it requires reading both physics_loss.py and walker_model.py and tracing that each loss term enforces the same equation the data generator solves. As a supporting numerical check: compute residual on 10 random training samples; if physics residual > zero-output residual for any term with lambda > 0, forward model consistency is not satisfied.
+
+Item 2 — Fourier embedding frequency coverage check:
+The dominant signal frequency for the target output must be derived from the cadence_spm primitive (Article I): f_dominant = cadence_spm / 60 Hz. For normalised time t ∈ [0,1] per step, this corresponds to 1 cycle/step fundamental and harmonics up to H_max (to be specified in the architecture Bill). The Fourier embedding B matrix must have at least 50% of its columns with projected frequency in [1, H_max] cycles per unit t. If random B is used, sigma must be set so that the 50th percentile of |B·e_t| (where e_t is the unit vector in the t dimension) falls within [1, H_max]. Alternatively, the architecture Bill may specify a learned or hand-designed B instead of random, derived directly from the cadence range.
+
+Item 3 — Model capacity check:
+```
+n_independent = N_train_profiles   # distinct conditioning vectors, NOT × T_steps
+assert model.count_parameters() <= 0.1 × n_independent_profiles
+```
+
+All three items must pass and be documented in the architecture Bill and training run Bill before pinn-compiler may write train_config.json.
+
+**Responsible agent:** `layer-setter` (Items 1 and 2 — architecture-level checks, documents in architecture Bill before training Bill is opened); `pinn-compiler` (Item 3 — capacity check, documents in training Bill). Neither agent may modify physics_loss.py or pinn_model.py unilaterally if a check fails; a Legislative Bill is required.
+
+---
+
 ### Amendment 20 — PINN Physics-First Training Order
 *Traces to: Article I + Article II*
 *Ratified: 2026-04-03. Proposed by: sole human engineer. Ratified by: sole human engineer.*

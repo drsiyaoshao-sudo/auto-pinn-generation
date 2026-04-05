@@ -77,6 +77,47 @@ class FourierFeatureEmbedding(nn.Module):
         return torch.cat([torch.sin(proj), torch.cos(proj)], dim=-1)  # (N, 2*fourier_dim)
 
 
+class ChebyshevEmbedding(nn.Module):
+    """
+    Chebyshev polynomial embedding for the normalised step time t.
+
+    Maps t ∈ [0, 1] → [T₁(t'), T₂(t'), ..., T_degree(t')] where t' = 2t − 1 ∈ [−1, 1].
+    T₀ = 1 (constant) is dropped — it carries no information.
+    Computed via the stable three-term recurrence:
+        T₀(x) = 1,  T₁(x) = x,  T_{n+1}(x) = 2x·Tₙ(x) − T_{n−1}(x)
+
+    Output dimension: degree  (T₁ through T_degree)
+
+    Physical grounding (bill_architecture_v21a):
+        Degrees 1–5 span 5 oscillation cycles per step period.
+        Odd degrees (1, 3, 5) capture anti-symmetric gy (stance/push-off).
+        Even degrees (2, 4) capture symmetric az (gravity + heel-strike).
+        Traces to cadence_spm primitive (Article I).
+    """
+
+    def __init__(self, degree: int = 5):
+        super().__init__()
+        self.degree = degree
+
+    def forward(self, t: torch.Tensor) -> torch.Tensor:
+        # t: (N,) or (N, 1) in [0, 1]
+        if t.dim() > 1:
+            t = t.squeeze(-1)           # (N,)
+        x = 2.0 * t - 1.0              # map to [−1, 1]
+
+        polys = []
+        T_prev = torch.ones_like(x)    # T₀ = 1
+        T_curr = x.clone()             # T₁ = x
+        polys.append(T_curr)           # start from T₁
+
+        for _ in range(2, self.degree + 1):
+            T_next = 2.0 * x * T_curr - T_prev
+            polys.append(T_next)
+            T_prev, T_curr = T_curr, T_next
+
+        return torch.stack(polys, dim=-1)   # (N, degree)
+
+
 class PINNModel(nn.Module):
     """
     Physics-Informed Neural Network for IMU signal generation.
@@ -86,35 +127,52 @@ class PINNModel(nn.Module):
       t: (N,) or (N, 1)  — normalised step time in [0, 1]
     Output columns: [ax_ms2, ay_ms2, az_ms2, gx_dps, gy_dps, gz_dps]
 
+    Embedding modes (mutually exclusive, select via constructor):
+      use_cheby=True  — ChebyshevEmbedding on t only; x passed through directly
+                        MLP input: [x (input_dim), T₁..T_K(t) (cheby_degree)] = input_dim + K
+      use_fourier=True — FourierFeatureEmbedding on concatenated [x, t]
+                        MLP input: 2 * fourier_dim
+      both False      — raw [x, t] concatenated (v20 behaviour)
+
     Amendment 3 compliance: output shape and units are identical to
     walker_model.py::generate_imu_sequence() — Layer 2 (imu_model.py) is unchanged.
     """
 
     def __init__(
         self,
-        input_dim:    int   = INPUT_DIM,
-        hidden_dim:   int   = HIDDEN_DIM,
-        n_layers:     int   = N_LAYERS,
-        use_fourier:  bool  = True,
-        fourier_dim:  int   = FOURIER_DIM,
+        input_dim:     int   = INPUT_DIM,
+        hidden_dim:    int   = HIDDEN_DIM,
+        n_layers:      int   = N_LAYERS,
+        use_fourier:   bool  = True,
+        fourier_dim:   int   = FOURIER_DIM,
         fourier_sigma: float = FOURIER_SIGMA,
-        fourier_seed: int   = 42,
+        fourier_seed:  int   = 42,
+        use_cheby:     bool  = False,
+        cheby_degree:  int   = 5,
     ):
         super().__init__()
         self.input_dim   = input_dim
         self.hidden_dim  = hidden_dim
         self.n_layers    = n_layers
         self.use_fourier = use_fourier
+        self.use_cheby   = use_cheby
 
-        # Combined input: conditioning vector x (input_dim) + time t (1)
-        combined_dim = input_dim + 1
+        if use_cheby and use_fourier:
+            raise ValueError("use_cheby and use_fourier are mutually exclusive")
 
-        if use_fourier:
-            self.fourier = FourierFeatureEmbedding(combined_dim, fourier_dim, fourier_sigma, fourier_seed)
-            first_dim = 2 * fourier_dim
-        else:
+        if use_cheby:
+            self.cheby   = ChebyshevEmbedding(degree=cheby_degree)
             self.fourier = None
-            first_dim = combined_dim
+            first_dim    = input_dim + cheby_degree   # [x, T₁..T_K]
+        elif use_fourier:
+            combined_dim = input_dim + 1
+            self.cheby   = None
+            self.fourier = FourierFeatureEmbedding(combined_dim, fourier_dim, fourier_sigma, fourier_seed)
+            first_dim    = 2 * fourier_dim
+        else:
+            self.cheby   = None
+            self.fourier = None
+            first_dim    = input_dim + 1              # raw [x, t]
 
         # Hidden layers
         layers = []
@@ -149,10 +207,14 @@ class PINNModel(nn.Module):
         if t.dim() == 1:
             t = t.unsqueeze(-1)          # (N, 1)
 
-        z = torch.cat([x, t], dim=-1)    # (N, input_dim + 1)
-
-        if self.use_fourier:
-            z = self.fourier(z)          # (N, 2*fourier_dim)
+        if self.use_cheby:
+            t_feat = self.cheby(t)       # (N, cheby_degree)
+            z = torch.cat([x, t_feat], dim=-1)   # (N, input_dim + cheby_degree)
+        elif self.use_fourier:
+            z = torch.cat([x, t], dim=-1)        # (N, input_dim + 1)
+            z = self.fourier(z)                  # (N, 2*fourier_dim)
+        else:
+            z = torch.cat([x, t], dim=-1)        # (N, input_dim + 1)
 
         h = self.hidden(z)               # (N, hidden_dim)
         return self.output_layer(h)      # (N, 6)
