@@ -53,7 +53,7 @@ claude
 | Command | What it does |
 |---------|-------------|
 | `/session [1–5]` | Top-level orchestrator — routes to the right pipeline stage, prints stage status, manages Justice gates |
-| `/model-train [phase]` | Stage 2 full PINN pipeline — data generation through validation. Phases: `data` `design` `compile` `train` `archive` `validate` |
+| `/model-train [phase]` | Stage 2 full PINN pipeline — data → design → compile → train → archive+validate. Phases: `data` `design` `compile` `train` `validate` |
 | `/hear "<name>" A vs B` | Declare a judicial hearing — warm courtroom, run parallel attorney arguments, collect evidence, record ruling |
 
 Supporting commands: `/plot-evidence`, `/plot-profile`, `/plot-training`
@@ -68,26 +68,42 @@ flowchart TD
 
     START --> PKG --> INIT
 
-    INIT --> S1
-
     subgraph MAIN ["Main Development Flow"]
         S1["Stage 1 — Firmware Simulation\nsimulator-operator × 4 profiles + pathological\nuart-reader · plotter"]:::stage
-        S2["Stage 2 — PINN Training\n/model-train\nAmendment 21 pre-flight → data → design\n→ compile → train → archive → validate"]:::stage
-        S3["Stage 3 — Grid Search\npinn-grid-controller → batch PINN inference\nsimulator-operator confirms boundaries"]:::stage
+        DATAGEN["synthetic-data-setter → synthetic-data-generator\n(runs in parallel with Stage 1 — no dependency)"]:::parallel
+
+        subgraph S2BOX ["Stage 2 — PINN Training  (/model-train)"]
+            direction TB
+            PRE["Amendment 21 pre-flight\n3 mandatory checks"]:::check
+            CACHE["data cache check\nskip if config unchanged"]:::check
+            DESIGN["layer-setter ∥ loss-setter\nphysics-reviewer"]:::stage2
+            COMPILE["pinn-compiler\nhyperparameter Bill"]:::stage2
+            CANARY["canary 20 epochs\n3 automated checks\n(descent · gy zero-crossing · residual)"]:::check
+            TRAIN["pinn-executor full run\npinn-monitor · train-sum"]:::stage2
+            SANITY["plotter: step plot\n+ threshold overlay\nPUSHOFF_DPS · ACC_Z_TOE_OFF"]:::gate
+            VALID["pinn-archivist\npinn-validator"]:::stage2
+            PRE --> CACHE --> DESIGN --> COMPILE --> CANARY --> TRAIN --> SANITY -->|"Gate 5a\nsignal sanity"| VALID
+        end
+
+        S3["Stage 3 — Grid Search\npinn-grid-controller (all domains)\n→ /hear batch ratification\n→ pinn-executor · simulator-operator"]:::stage
         S4["Stage 4 — Edge Cases\nfw-generator → firmware Bills\npinn-executor regression"]:::stage
         S5["Stage 5 — Hardware Bring-up\nArticle II flash gate\nSI measurement · BLE export"]:::stage
 
-        S1 -->|"Justice Gate S1\nstage-compactor"| S2
-        S2 -->|"Justice Gate S2\nstage-compactor"| S3
+        S1 -->|"Justice Gate S1\nstage-compactor"| S2BOX
+        DATAGEN -.->|"data ready"| CACHE
+        S2BOX -->|"Justice Gate S2\nstage-compactor"| S3
         S3 -->|"Justice Gate S3\nstage-compactor"| S4
         S4 -->|"Justice Gate S4\nstage-compactor"| S5
         S5 -->|"Justice Gate S5 — FINAL\nstage-compactor"| DONE([Constitutional method validated]):::done
     end
 
+    INIT --> S1
+    INIT --> DATAGEN
+
     %% Judicial hearing — like a PR for major dev decisions
     CONFLICT{"Amendment conflict?\nNo precedent?\nBill needs debate?"}:::decision
     S1 -.->|"conflict detected"| CONFLICT
-    S2 -.->|"conflict detected"| CONFLICT
+    S2BOX -.->|"conflict detected"| CONFLICT
     S3 -.->|"conflict detected"| CONFLICT
     S4 -.->|"conflict detected"| CONFLICT
 
@@ -114,6 +130,10 @@ flowchart TD
     classDef bureaucracy fill:#3d2b00,stroke:#f0a500,color:#fff
     classDef infra      fill:#1a2e1a,stroke:#4caf50,color:#fff
     classDef stage      fill:#1a1a2e,stroke:#4f8ef7,color:#fff
+    classDef stage2     fill:#162040,stroke:#4f8ef7,color:#cce
+    classDef parallel   fill:#1a2e2e,stroke:#22d3ee,color:#fff
+    classDef check      fill:#2a1a00,stroke:#f0a500,color:#fff
+    classDef gate       fill:#2e2a10,stroke:#fbbf24,color:#fff,font-weight:bold
     classDef decision   fill:#2e1a2e,stroke:#c084fc,color:#fff
     classDef judiciary  fill:#2e1a1a,stroke:#f87171,color:#fff
     classDef evidence   fill:#1a2020,stroke:#34d399,color:#fff
@@ -129,21 +149,27 @@ flowchart TD
 ### The Five Pipeline Stages
 
 ```
-Stage 1 — Firmware Simulation
-  simulator-operator runs all 4 profiles in Renode
-  uart-reader captures UART · plotter generates signal plots
-  Exit: ≥ 98/100 steps, SI < 10% healthy, SI > 10% pathological
+Stage 1 — Firmware Simulation                    ┐ parallel from session start
+  simulator-operator runs all 4 profiles in Renode│
+  uart-reader captures UART · plotter plots        ├── synthetic-data-setter + generator
+  Exit: ≥ 98/100 steps, SI < 10%, SI > 10% patho ┘    run alongside Stage 1 (no dependency)
 
-Stage 2 — PINN Training              ← /model-train
-  Amendment 21 pre-flight (mandatory — see below)
-  synthetic-data-setter/generator → layer-setter → loss-setter
-  → physics-reviewer → pinn-compiler → pinn-executor
-  → train-sum → pinn-archivist → pinn-validator
-  Exit: pinn-validator passes all 3 checks, checkpoint archived
+Stage 2 — PINN Training                          ← /model-train
+  [Amendment 21 pre-flight — 3 mandatory checks]
+  [data cache check — skip generation if config unchanged]
+  synthetic-data-setter/generator (only if stale)
+  layer-setter ∥ loss-setter (parallel) → physics-reviewer
+  → pinn-compiler
+  → pinn-monitor → pinn-executor (20-epoch canary) → pinn-executor (full)
+  → train-sum
+  → pinn-archivist → plotter (step plot + threshold overlay)
+  → [Justice: signal sanity review] → pinn-validator
+  Exit: signal sanity confirmed, pinn-validator passes all 3 checks, checkpoint archived
 
 Stage 3 — Grid Search
-  pinn-grid-controller proposes search domains as Bills
-  pinn-executor runs batch PINN inference · simulator-operator confirms boundaries in Renode
+  pinn-grid-controller proposes all search domains in one pass
+  → /hear batch ratification (one courtroom, N rulings)
+  → pinn-executor batch inference · simulator-operator Renode confirms boundaries
   Exit: all boundaries Renode-confirmed, written to case_law.md
 
 Stage 4 — Edge Cases
@@ -208,12 +234,22 @@ The hearing:
 3. Evidence collected via `/plot-evidence` as needed
 4. Justice rules — ruling recorded in `docs/gaitsense_code/case_law.md` before implementation
 
+### Key Lessons Codified in the Pipeline
+
+| Lesson | Where enforced |
+|--------|---------------|
+| Nine failed runs from skipping physics/embedding/capacity checks | Amendment 21 pre-flight in `/model-train` |
+| Bad config wastes hours before failure is visible | 20-epoch canary gate — stops diverging runs in ~2 min |
+| PINN signal amplitudes may be incompatible with algorithm thresholds | Gate 5a signal sanity — step plot + threshold overlay before any algorithm run |
+| Regenerating training data on every iteration wastes time | Data cache check — skips Phase 1 if `data_config.json` unchanged |
+| Ad-hoc code instead of agent-callable modules causes drift | [`lesson_code_pasta_prevention.md`](docs/gaitsense_code/lesson_code_pasta_prevention.md) |
+
 ### Branch Roadmap
 
 ```
 constitution-style-management (this branch)
   ├── All 22 agents defined + 5 skills wired
-  ├── Full 5-stage /session orchestrator
+  ├── Full 5-stage /session orchestrator with efficiency improvements
   └── All agents run Sonnet/Haiku (no local/cloud split yet)
         │
         └── hybrid-model (next rebase target)
