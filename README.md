@@ -3,6 +3,183 @@
 Single-ankle IMU wearable for detecting walking pattern asymmetry (Symmetry Index).
 Hardware: Seeed XIAO nRF52840 Sense — nRF52840 Cortex-M4F + LSM6DS3TR-C 6-DOF IMU + BLE 5.0.
 
+---
+
+> **Branch: `constitution-style-management`**
+> This branch adds the AI agent session layer on top of `main`. If you are here to run
+> the simulator or flash firmware, jump to [Section 1](#1-quick-start--simulator-only-no-hardware).
+> If you are here to run a development session with Claude Code, read this section first.
+
+---
+
+## Agent Session — How to Run Development with Claude Code
+
+This branch turns the constitutional governance system (CLAUDE.md) into a live development
+session. Every stage of the pipeline — from synthetic data generation to PINN training to
+hardware bring-up — is wired to a skill command backed by specialist agents.
+
+You do not need to know which agent to call for which task. The session orchestrator
+routes everything. You decide. Agents execute.
+
+### Prerequisites
+
+```bash
+# Claude Code CLI must be installed and authenticated
+claude --version
+
+# Python environment (for PINN training and simulation)
+pip install numpy scipy torch matplotlib streamlit plotly pytest pandas
+```
+
+### Start a session
+
+```bash
+# Open the repo in Claude Code
+claude
+
+# Check current stage and available agents
+/session status
+
+# Run a specific stage
+/session 2          # PINN training pipeline
+/session 3          # Grid search (requires Stage 2 closed)
+
+# Or run from current stage to completion (human gates throughout)
+/session
+```
+
+### The Three Skill Commands You Use Most
+
+| Command | What it does |
+|---------|-------------|
+| `/session [1–5]` | Top-level orchestrator — routes to the right pipeline stage, prints stage status, manages Justice gates |
+| `/model-train [phase]` | Stage 2 full PINN pipeline — data generation through validation. Phases: `data` `design` `compile` `train` `archive` `validate` |
+| `/hear "<name>" A vs B` | Declare a judicial hearing — warm courtroom, run parallel attorney arguments, collect evidence, record ruling |
+
+Supporting commands: `/plot-evidence`, `/plot-profile`, `/plot-training`
+
+### The Five Pipeline Stages
+
+```
+Stage 1 — Firmware Simulation
+  simulator-operator runs all 4 profiles in Renode
+  uart-reader captures UART · plotter generates signal plots
+  Exit: ≥ 98/100 steps, SI < 10% healthy, SI > 10% pathological
+
+Stage 2 — PINN Training              ← /model-train
+  Amendment 21 pre-flight (mandatory — see below)
+  synthetic-data-setter/generator → layer-setter → loss-setter
+  → physics-reviewer → pinn-compiler → pinn-executor
+  → train-sum → pinn-archivist → pinn-validator
+  Exit: pinn-validator passes all 3 checks, checkpoint archived
+
+Stage 3 — Grid Search
+  pinn-grid-controller proposes search domains as Bills
+  pinn-executor runs batch PINN inference · simulator-operator confirms boundaries in Renode
+  Exit: all boundaries Renode-confirmed, written to case_law.md
+
+Stage 4 — Edge Cases
+  fw-generator translates boundary findings into firmware Bills
+  pinn-executor regression · simulator-operator Renode confirm
+  Exit: all boundaries fixed, all 4 profiles still pass regression
+
+Stage 5 — Hardware Bring-up
+  Justice approves flash (Article II irreversibility gate)
+  Physical flash · SI measurement on real hardware · BLE export · clinical validation
+  Exit: hardware SI within 6.3% of Renode prediction
+```
+
+### Amendment 21 Pre-Flight (mandatory before any training run)
+
+Nine failed training runs (v10–v19) were caused by skipping this checklist.
+`/model-train` enforces it, but know what it checks:
+
+```
+1. Physics model must match data generator equations (not a linearisation)
+   Diagnostic: ODE residual on true data must be LESS than on az=0 baseline.
+   If residual(true) > residual(zero): remove that loss term.
+
+2. Embedding basis must span cadence-derived step frequencies
+   Chebyshev T1–T5 on normalised step time t is the validated choice (bill_architecture_v21a).
+   Random Fourier B on concatenated (x,t) is NOT sufficient.
+
+3. Model capacity ≤ 0.1 × N_independent_profiles
+   N_independent_profiles = distinct conditioning vectors (NOT × timesteps).
+   Current baseline: 1174 params / 350 profiles = 3.4 params/profile (v21).
+```
+
+Full lesson: [`docs/gaitsense_code/lesson_nine_run_diagnostic.md`](docs/gaitsense_code/lesson_nine_run_diagnostic.md)
+
+### Agent Roster (22 agents)
+
+| Branch | Agents |
+|--------|--------|
+| **Legislature** | `synthetic-data-setter` `loss-setter` `pinn-compiler` `pinn-grid-controller` `fw-generator` |
+| **Judiciary** | `judicial-clerk` `attorney-A` `attorney-B` |
+| **Executive** | `synthetic-data-generator` `layer-setter` `physics-reviewer` `pinn-executor` `pinn-monitor` `train-sum` `pinn-archivist` `pinn-validator` `simulator-operator` `plotter` `uart-reader` `plot-orchestrator` `stage-compactor` |
+
+**Rule:** Every agent has a designated scope. Do not ask Claude to implement tasks that belong
+to a specific agent — invoke the agent instead. This is documented in
+[`docs/gaitsense_code/lesson_code_pasta_prevention.md`](docs/gaitsense_code/lesson_code_pasta_prevention.md).
+
+### Declaring a Judicial Hearing
+
+When two amendments conflict, a situation has no precedent, or a Bill needs debate:
+
+```
+/hear "PINN embedding basis selection" \
+  "Chebyshev T1-T5 on t — cadence grounded" \
+  vs \
+  "Fourier B on (x,t) — spectral coverage"
+```
+
+The hearing:
+1. judicial-clerk verifies the agent roster and reads the full constitutional record
+2. attorney-A and attorney-B argue their positions in parallel
+3. Evidence collected via `/plot-evidence` as needed
+4. Justice rules — ruling recorded in `docs/gaitsense_code/case_law.md` before implementation
+
+### Branch Roadmap
+
+```
+constitution-style-management (this branch)
+  ├── All 22 agents defined + 5 skills wired
+  ├── Full 5-stage /session orchestrator
+  └── All agents run Sonnet/Haiku (no local/cloud split yet)
+        │
+        └── hybrid-model (next rebase target)
+              ├── Adds corpus_tier / model_target / forward_policy to agent frontmatter
+              ├── Classifies documents: public / private / derived-ok
+              ├── Routes local agents to ~7B local LLM (data-sensitive tasks)
+              └── Routes cloud agents to Sonnet (reasoning, constitutional logic)
+              Design note: docs/gaitsense_code/hybrid_rebase_design_note.md
+```
+
+### Key Documents (this branch additions)
+
+```
+.claude/commands/
+  session.md              ← /session — full pipeline orchestrator
+  model-train.md          ← /model-train — Stage 2 PINN pipeline
+  hear.md                 ← /hear — judicial hearing procedure
+  plot-evidence.md        ← /plot-evidence — evidence collection
+
+.claude/agents/
+  fw-generator.md         ← NEW: firmware Bills from PINN boundary findings
+  [20 other agents]       ← see Agent Roster above
+
+docs/gaitsense_code/
+  lesson_nine_run_diagnostic.md    ← Nine-run failure arc + Amendment 21 checklist
+  lesson_code_pasta_prevention.md  ← Agent scope boundaries + standard code rules
+  hybrid_rebase_design_note.md     ← Context mask + local/cloud split design
+  demo_cicd_flowchart.md           ← Full CI/CD demo evidence (Part 5: this session)
+  bills/                           ← All enacted Bills (physics loss, architecture)
+  amendments.md                    ← 21 ratified amendments
+  case_law.md                      ← All recorded precedents
+```
+
+---
+
 **Total cost:** ~$45–50. No RTOS expertise required to run the simulator. No hardware required to validate the algorithm.
 
 ---
