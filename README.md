@@ -58,6 +58,74 @@ claude
 
 Supporting commands: `/plot-evidence`, `/plot-profile`, `/plot-training`
 
+### Session Flowchart
+
+```mermaid
+flowchart TD
+    START(["/session or /session status"]):::entry
+    PKG["package-manager\nStep 0 — verify Python deps"]:::bureaucracy
+    INIT["Session Init\nPrint constitutional record\nStage status · Agent roster"]:::infra
+
+    START --> PKG --> INIT
+
+    INIT --> S1
+
+    subgraph MAIN ["Main Development Flow"]
+        S1["Stage 1 — Firmware Simulation\nsimulator-operator × 4 profiles + pathological\nuart-reader · plotter"]:::stage
+        S2["Stage 2 — PINN Training\n/model-train\nAmendment 21 pre-flight → data → design\n→ compile → train → archive → validate"]:::stage
+        S3["Stage 3 — Grid Search\npinn-grid-controller → batch PINN inference\nsimulator-operator confirms boundaries"]:::stage
+        S4["Stage 4 — Edge Cases\nfw-generator → firmware Bills\npinn-executor regression"]:::stage
+        S5["Stage 5 — Hardware Bring-up\nArticle II flash gate\nSI measurement · BLE export"]:::stage
+
+        S1 -->|"Justice Gate S1\nstage-compactor"| S2
+        S2 -->|"Justice Gate S2\nstage-compactor"| S3
+        S3 -->|"Justice Gate S3\nstage-compactor"| S4
+        S4 -->|"Justice Gate S4\nstage-compactor"| S5
+        S5 -->|"Justice Gate S5 — FINAL\nstage-compactor"| DONE([Constitutional method validated]):::done
+    end
+
+    %% Judicial hearing — like a PR for major dev decisions
+    CONFLICT{"Amendment conflict?\nNo precedent?\nBill needs debate?"}:::decision
+    S1 -.->|"conflict detected"| CONFLICT
+    S2 -.->|"conflict detected"| CONFLICT
+    S3 -.->|"conflict detected"| CONFLICT
+    S4 -.->|"conflict detected"| CONFLICT
+
+    subgraph HEARING ["Judicial Hearing  (/hear)  ← like opening a PR"]
+        direction TB
+        JC["judicial-clerk\nWarm courtroom\nRead amendments · case_law · bills"]:::judiciary
+        AA["attorney-A\nArgues Position A"]:::judiciary
+        AB["attorney-B\nArgues Position B"]:::judiciary
+        EV["/plot-evidence\nSignal plots · UART output\ntraining diagnostics"]:::evidence
+        RULING["Justice rules\nCites physical + clinical basis\n(Benjamin Franklin + Jefferson principles)"]:::justice
+        RECORD["Prevailing attorney records ruling\nin case_law.md"]:::record
+
+        JC --> AA & AB
+        AA & AB --> EV --> RULING --> RECORD
+    end
+
+    CONFLICT -->|"/hear declaration"| JC
+    RECORD -->|"ruling merged back\nprecedent binding on all future agents"| MERGE(["Resume stage\nwith ruling applied"]):::merge
+    MERGE -.-> S2
+    MERGE -.-> S3
+    MERGE -.-> S4
+
+    classDef entry      fill:#1a1a2e,stroke:#4f8ef7,color:#fff,font-weight:bold
+    classDef bureaucracy fill:#3d2b00,stroke:#f0a500,color:#fff
+    classDef infra      fill:#1a2e1a,stroke:#4caf50,color:#fff
+    classDef stage      fill:#1a1a2e,stroke:#4f8ef7,color:#fff
+    classDef decision   fill:#2e1a2e,stroke:#c084fc,color:#fff
+    classDef judiciary  fill:#2e1a1a,stroke:#f87171,color:#fff
+    classDef evidence   fill:#1a2020,stroke:#34d399,color:#fff
+    classDef justice    fill:#2e2a10,stroke:#fbbf24,color:#fff,font-weight:bold
+    classDef record     fill:#1a1a1a,stroke:#9ca3af,color:#ccc
+    classDef merge      fill:#10281a,stroke:#4caf50,color:#fff
+    classDef done       fill:#10281a,stroke:#4caf50,color:#fff,font-weight:bold
+```
+
+> **Judicial hearing = pull request for major decisions.**
+> When an amendment conflict or an undecided Bill blocks development, `/hear` opens a structured debate — attorneys argue both sides, evidence is collected, Justice rules. The ruling is recorded in `case_law.md` and merges back into the session as binding precedent, exactly like a PR merges reviewed code back to main.
+
 ### The Five Pipeline Stages
 
 ```
