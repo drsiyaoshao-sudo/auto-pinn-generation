@@ -22,14 +22,14 @@ CRITICAL — autograd requirement for L_vel:
   loss value with zero gradient — a silent training failure.
   An assert guard is included to catch this at runtime.
 
-CRITICAL — autograd requirement for L_ODE (bill_physics_loss_v2):
-  az_pred must remain an attached PyTorch tensor. z_pred is now computed
-  by true per-profile double-integration via torch.cumsum on the live
-  computation graph. The previous z_proxy approximation (d2z_dt2 / ω²)
-  caused algebraic cancellation: omega2 * (d2z_dt2/omega2) = d2z_dt2,
-  collapsing the residual to 2*d2z_dt2 - F_contact and eliminating
-  omega2 from the gradient path. bill_physics_loss_v2 mandates the
-  correct double-integration to restore the physics constraint.
+CRITICAL — autograd requirement for L_ODE (bill_physics_loss_v3):
+  az_pred must remain an attached PyTorch tensor. z_pred is computed by
+  gravity-DC-corrected per-profile double-integration via torch.cumsum on
+  the live computation graph. bill_physics_loss_v3 adds per-profile DC
+  subtraction before cumsum to eliminate the parabolic accumulation caused
+  by the gravitational baseline at initialisation (structural L_ODE minimum
+  ~44 reduced to < 1.0 after correction). cadence_spm remains active in ω²
+  and F_contact — Article I preserved.
 """
 
 import math
@@ -117,22 +117,32 @@ class PhysicsLoss(nn.Module):
             -((t - t_hs) ** 2) / (2.0 * sigma_t ** 2)
         )
 
-        # Per-profile double-integration (bill_physics_loss_v2):
-        # reshape (B*T,) → (B, T), cumsum for velocity, cumsum for displacement,
-        # then reshape back. Physical dt per profile is step_period_s / (t_steps-1).
+        # Per-profile double-integration (bill_physics_loss_v3 — gravity DC correction):
+        # The gravity baseline (mean of d2z_dt2 per profile) is subtracted before
+        # integration. This removes the parabolic accumulation caused by the DC
+        # gravitational offset at network initialisation, isolating the oscillatory
+        # component that the spring-mass ODE governs.
         #
-        # This replaces the previous z_proxy = d2z_dt2 / (omega2 + 1e-6) which
-        # caused algebraic cancellation: omega2 * z_proxy = d2z_dt2, collapsing
-        # the residual to 2*d2z_dt2 - F_contact and removing omega2 from the loss.
+        # Physical interpretation: the ODE describes oscillations about gravitational
+        # equilibrium. The DC component is static gravitational loading and does not
+        # participate in the oscillatory dynamics. cadence_spm remains active in ω²
+        # and F_contact — Article I is satisfied (bill_physics_loss_v3).
+        #
+        # Replaces bill_physics_loss_v2 integration which accumulated DC and produced
+        # z_pred ≈ 1.1 m (100× too large), causing ω²·z to dominate the residual by
+        # 6–7× over F_contact and creating an unsolvable structural minimum of ~44.
         dt = step_period_s.reshape(-1, t_steps)[:, 0:1] / (t_steps - 1)   # (B, 1) physical dt
         d2z_mat = d2z_dt2.reshape(-1, t_steps)                              # (B, T)
-        v_z_mat = torch.cumsum(d2z_mat, dim=1) * dt                         # velocity (B, T)
-        z_mat   = torch.cumsum(v_z_mat,  dim=1) * dt                        # displacement (B, T)
+        d2z_dc  = d2z_mat.mean(dim=1, keepdim=True)                         # per-profile DC (B, 1)
+        d2z_ac  = d2z_mat - d2z_dc                                           # oscillatory only (B, T)
+        v_z_mat = torch.cumsum(d2z_ac,  dim=1) * dt                         # velocity (B, T)
+        z_mat   = torch.cumsum(v_z_mat, dim=1) * dt                         # displacement (B, T)
         z_mat   = z_mat - z_mat.mean(dim=1, keepdim=True)                   # drift correction
         z_pred  = z_mat.reshape(-1)                                          # (B*T,)
 
-        # ODE residual — omega2 is now independent of d2z_dt2 in the gradient path
-        residual = d2z_dt2 + omega2 * z_pred - F_contact
+        # ODE residual on the oscillatory component — omega2 active in gradient path
+        # d2z_ac used (not d2z_dt2) to match the integration path (bill_physics_loss_v3)
+        residual = d2z_ac.reshape(-1) + omega2 * z_pred - F_contact
 
         return torch.mean(residual ** 2)
 

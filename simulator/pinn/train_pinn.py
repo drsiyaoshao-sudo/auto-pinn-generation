@@ -67,6 +67,7 @@ def main():
     lr_scheduler_eta_min = cfg["lr_scheduler_eta_min"]
     epochs_max         = cfg["epochs_max"]
     warmup_epochs      = cfg["physics_loss_warmup_epochs"]
+    data_ramp_epochs   = cfg.get("data_ramp_epochs", warmup_epochs)
     batch_size         = cfg["batch_size"]
     early_stop_patience  = cfg["early_stop_patience"]
     early_stop_min_epoch = cfg["early_stop_min_epoch"]
@@ -173,8 +174,20 @@ def main():
 
     for epoch in range(1, epochs_max + 1):
 
-        # Physics warmup ramp: 0 → 1 over warmup_epochs
-        physics_weight = min(epoch / max(warmup_epochs, 1), 1.0)
+        # Amendment 20 — Physics-first training order:
+        #   Phase 1 (epoch <= warmup_epochs): physics at full weight, data suppressed.
+        #     data_weight = 0.0 — model learns physics manifold before data is introduced.
+        #   Phase 2 (warmup < epoch <= warmup + data_ramp_epochs): data ramps in 0 → 1.
+        #     physics remains at full weight throughout.
+        #   Phase 3 (epoch > warmup + data_ramp_epochs): both at full weight.
+        # This replaces the previous physics_weight_ramp (0→1) which was data-first
+        # and violated Amendment 20. (bill_train_config_v4)
+        physics_weight = 1.0   # physics at full weight from epoch 1 — Amendment 20
+        if epoch <= warmup_epochs:
+            data_weight = 0.0  # physics-only phase
+        else:
+            data_ramp_progress = min((epoch - warmup_epochs) / max(data_ramp_epochs, 1), 1.0)
+            data_weight = data_ramp_progress
 
         # ── Train one epoch ──────────────────────────────────────────────────
         model.train()
@@ -228,7 +241,7 @@ def main():
                 t_steps=T_steps,
             )
 
-            total_loss = loss_data + phys_dict["physics"]
+            total_loss = data_weight * loss_data + phys_dict["physics"]
 
             # NaN/Inf guard
             if not torch.isfinite(total_loss):
@@ -303,7 +316,7 @@ def main():
         val_ode   = phys_val["l_ode"].item()
         val_vel   = phys_val["l_vel"].item()
         val_phase = phys_val["l_phase"].item()
-        val_total = val_data + phys_val["physics"].item()
+        val_total = data_weight * val_data + phys_val["physics"].item()
 
         # ── Three-strike / 10-epoch divergence rule (Amendment 7) ────────────
         if val_total < prev_val_total:
@@ -350,7 +363,7 @@ def main():
                 f" | ode={val_ode:.4f}"
                 f" | vel={val_vel:.4f}"
                 f" | phase={val_phase:.4f}"
-                f" | ramp={physics_weight:.2f}"
+                f" | data_w={data_weight:.2f}"
                 f" | lr={current_lr:.2e}"
                 f" | elapsed={elapsed:.1f}s"
             )
@@ -363,6 +376,7 @@ def main():
                 "val_phase":    val_phase,
                 "val_total":    val_total,
                 "physics_weight": physics_weight,
+                "data_weight": data_weight,
                 "lr":           current_lr,
                 "timestamp":    time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             }
