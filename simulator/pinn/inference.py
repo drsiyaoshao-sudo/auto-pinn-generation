@@ -30,7 +30,8 @@ OUTPUT_COLS = ["ax_ms2", "ay_ms2", "az_ms2", "gx_dps", "gy_dps", "gz_dps"]
 COL         = {name: i for i, name in enumerate(OUTPUT_COLS)}
 
 
-def _resolve_checkpoint(run_id: str | None) -> tuple[str, str]:
+def _resolve_checkpoint(run_id):
+    # type: (str) -> tuple
     """Return (ckpt_path, norm_path) for a given run_id.
     If run_id is None, read run_id from train_config.json."""
     if run_id is None:
@@ -45,13 +46,13 @@ def _resolve_checkpoint(run_id: str | None) -> tuple[str, str]:
     return ckpt, norm
 
 
-def load_model(run_id: str | None = None,
-               hidden_dim: int | None = None,
-               n_layers: int | None = None,
-               use_cheby: bool | None = None,
-               cheby_degree: int | None = None,
-               use_fourier: bool | None = None,
-               fourier_dim: int | None = None):
+def load_model(run_id: str = None,
+               hidden_dim = None,
+               n_layers = None,
+               use_cheby = None,
+               cheby_degree = None,
+               use_fourier = None,
+               fourier_dim = None):
     """Load PINN model + norm stats.
 
     Architecture params default to train_config.json values if not supplied.

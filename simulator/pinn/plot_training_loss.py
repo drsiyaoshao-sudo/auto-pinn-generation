@@ -47,7 +47,7 @@ def _find_latest_metrics() -> str:
     return logs[0]
 
 
-def _load_metrics(run_id: str | None) -> tuple[str, list[dict]]:
+def _load_metrics(run_id) :
     if run_id is None:
         path = _find_latest_metrics()
         run_id = os.path.basename(path).replace("run_", "").replace("_metrics.jsonl", "")
@@ -64,7 +64,7 @@ def _load_metrics(run_id: str | None) -> tuple[str, list[dict]]:
     return run_id, rows
 
 
-def run(run_id: str | None = None):
+def run(run_id = None):
     run_id, rows = _load_metrics(run_id)
 
     epochs        = np.array([r["epoch"]       for r in rows])

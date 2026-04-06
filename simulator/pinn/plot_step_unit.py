@@ -51,7 +51,7 @@ def _threshold_label(val, name, source):
     return f"{name}={val} ({source})"
 
 
-def run(run_id: str | None = None):
+def run(run_id = None):
     model, Y_mean, Y_std = load_model(run_id)
 
     # resolve actual run_id for filename
