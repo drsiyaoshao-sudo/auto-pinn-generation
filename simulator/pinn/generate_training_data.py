@@ -244,7 +244,7 @@ for idx, prof in enumerate(all_profiles):
     success = False
     while strikes < 3:
         try:
-            seq = generate_imu_sequence(prof, n_steps=1, rng=seq_rng)
+            seq = generate_imu_sequence(prof, n_steps=2, rng=seq_rng)
             break
         except Exception as exc:
             strikes += 1
@@ -255,15 +255,27 @@ for idx, prof in enumerate(all_profiles):
         warnings.warn(f"IMU seq idx={idx} all 3 strikes failed — filling with zeros.")
         seq = np.zeros((SAMPLES_PER_PROFILE, 6), dtype=np.float32)
 
-    # seq shape may be != SAMPLES_PER_PROFILE depending on timing variability
-    # Pad or truncate to exactly SAMPLES_PER_PROFILE
-    n_samples = seq.shape[0]
-    if n_samples >= SAMPLES_PER_PROFILE:
-        seq_fixed = seq[:SAMPLES_PER_PROFILE, :]
+    # Skip the stationary prefix (first SAMPLES_PER_PROFILE samples = 1s at 208 Hz).
+    # generate_imu_sequence prepends a 1-second stationary period for bias calibration.
+    # The walking signal starts at sample index SAMPLES_PER_PROFILE.
+    # We take the next SAMPLES_PER_PROFILE samples (one walking step window).
+    # If n_steps=1 produces fewer than 2*SAMPLES_PER_PROFILE total, regenerate
+    # with n_steps=2 to ensure enough walking data is available.
+    STAT = SAMPLES_PER_PROFILE  # stationary prefix length
+    if seq.shape[0] < STAT + SAMPLES_PER_PROFILE:
+        # Not enough walking data — regenerate with n_steps=2
+        try:
+            seq = generate_imu_sequence(prof, n_steps=2, rng=seq_rng)
+        except Exception:
+            seq = np.zeros((2 * SAMPLES_PER_PROFILE + STAT, 6), dtype=np.float32)
+
+    walking = seq[STAT:]   # strip stationary prefix
+    n_walking = walking.shape[0]
+    if n_walking >= SAMPLES_PER_PROFILE:
+        seq_fixed = walking[:SAMPLES_PER_PROFILE, :]
     else:
-        # Pad by repeating last row
-        pad = np.tile(seq[-1:, :], (SAMPLES_PER_PROFILE - n_samples, 1))
-        seq_fixed = np.concatenate([seq, pad], axis=0)
+        pad = np.tile(walking[-1:, :], (SAMPLES_PER_PROFILE - n_walking, 1))
+        seq_fixed = np.concatenate([walking, pad], axis=0)
     seq_fixed = seq_fixed.astype(np.float32)
 
     X_all[idx] = profile_to_x_vector(prof)
