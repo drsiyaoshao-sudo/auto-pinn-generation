@@ -34,5 +34,10 @@ Example invocations:
   /plot-training run_20260403_141523
 
 Now invoke the plotter agent with the run_id "$ARGUMENTS".
-If no run_id is given, find the most recent .jsonl file in simulator/pinn/training_logs/ and use that.
-If the training_logs directory is empty or does not exist, report it and stop.
+Metrics logs are in simulator/pinn/checkpoints/run_<run_id>_metrics.jsonl.
+If no run_id is given, use the most recent .jsonl in simulator/pinn/checkpoints/.
+
+The plotter agent must call:
+    cd /path/to/repo && python simulator/pinn/plot_training_loss.py [run_id]
+
+Do NOT write inline plot code. plot_training_loss.py is the standard module.

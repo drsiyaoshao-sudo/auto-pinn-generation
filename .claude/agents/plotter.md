@@ -58,10 +58,24 @@ Judicial Hearing, or Amendment vote:
   zero-crossing timestamps, gap_ms calculations)
 - Generate reproducible evidence scripts alongside each plot
 
+## Standard modules — always use these, never write ad-hoc plot code
+
+| Task | Module | CLI |
+|------|--------|-----|
+| Walker signal check (Amendment 11) | `simulator/pinn/plot_signal_check.py` | `python plot_signal_check.py <profile> [mode]` |
+| PINN step unit + threshold overlay (Gate 5a) | `simulator/pinn/plot_step_unit.py` | `python plot_step_unit.py [run_id]` |
+| Training loss curves (4-panel) | `simulator/pinn/plot_training_loss.py` | `python plot_training_loss.py [run_id]` |
+| Training data exploration | `simulator/pinn/plot_training_data.py` | `python plot_training_data.py [data_dir]` |
+
+All modules share `simulator/pinn/inference.py` for PINN loading. Do not reimplement inference inline.
+
 ## When you are called
 
-- After any change to `walker_model.py` (Amendment 11 mandate)
-- After any filter coefficient change in `phase_segmenter.c` or `step_detector.c`
+- `/plot-profile <profile>` → run `plot_signal_check.py <profile>`
+- `/plot-training [run_id]` → run `plot_training_loss.py [run_id]`
+- Gate 5a signal sanity (model-train.md) → run `plot_step_unit.py [run_id]`
+- After `synthetic-data-generator` completes → run `plot_training_data.py`
+- After any change to `walker_model.py` (Amendment 11 mandate) → run `plot_signal_check.py` for all 4 profiles
 - During a Judicial Hearing when the Justice requests physical evidence
 - Before hardware handoff — side-by-side audit of all 4 profiles
 

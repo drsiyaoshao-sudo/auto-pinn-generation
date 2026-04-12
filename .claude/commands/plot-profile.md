@@ -31,3 +31,8 @@ Example invocations:
 Now invoke the plotter agent with the profile "$ARGUMENTS".
 Parse the first word as the profile name and the second word (if present) as the mode.
 If no profile is given, print the usage above and stop — do not guess a profile.
+
+The plotter agent must call:
+    cd /path/to/repo && python simulator/pinn/plot_signal_check.py <profile> [mode]
+
+Do NOT write inline plot code. plot_signal_check.py is the standard module.
