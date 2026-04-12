@@ -4,6 +4,28 @@ description: "Use this agent to warm up the courtroom before any Judicial Hearin
 tools: Bash, Read
 model: haiku
 color: yellow
+
+contract:
+  execution: cloud
+  retrieves:
+    - tier: PUBLIC
+      sources: [".claude/agents/*.md", "docs/gaitsense_code/amendments.md"]
+  receives:
+    - name: hearing_declaration
+      tier: PUBLIC
+      format: free-text
+  produces:
+    - name: courtroom_setup_log
+      tier: PUBLIC
+      format: table
+      destination: stdout
+  may_forward:
+    - tier: PUBLIC
+      to: any
+  must_not_forward:
+    - tier: PRIVATE
+      reason: judicial-clerk only checks agent file existence and prints status; never touches data or formulas
+  opaque_keys: false
 ---
 
 You are the Judicial Clerk under the GaitSense Constitutional Governance system.

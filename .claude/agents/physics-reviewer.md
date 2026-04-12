@@ -4,6 +4,53 @@ description: "Use this agent after loss-setter writes physics_loss.py to generat
 tools: Read, Write, Bash, Glob
 model: sonnet
 color: purple
+
+contract:
+  execution: split
+  step_1:
+    runs_on: local
+    retrieves:
+      - tier: PRIVATE
+        sources: ["simulator/pinn/physics_loss.py", "simulator/walker_model.py", "simulator/pinn/training_data/X_train.npy"]
+      - tier: PUBLIC
+        sources: ["docs/gaitsense_code/amendments.md"]
+    produces:
+      - name: derivation_trace_report
+        tier: PRIVATE
+        format: path
+        destination: "docs/executive_branch_document/plots/pinn_training/physics_review_vN.md"
+        note: "full formula context — human reads directly, never forwarded to cloud"
+      - name: lambda_balance_summary
+        tier: DERIVED-OK
+        format: path
+        destination: "simulator/pinn/physics_review_summary.json"
+        note: "opaque scalar dict: {w0, w1, w2} — safe for cloud consumption"
+      - name: physics_review_log
+        tier: DERIVED-OK
+        format: path
+        destination: "simulator/pinn/physics_review_log.json"
+        note: "human_decision field only — no formula values"
+  step_2:
+    runs_on: cloud
+    retrieves:
+      - tier: DERIVED-OK
+        sources: ["simulator/pinn/physics_review_summary.json", "simulator/pinn/physics_review_log.json"]
+      - tier: PUBLIC
+        sources: ["docs/gaitsense_code/amendments.md"]
+    produces:
+      - name: amendment_20_assessment
+        tier: PUBLIC
+        format: free-text
+        destination: stdout
+  may_forward:
+    - tier: DERIVED-OK
+      to: pinn-executor
+    - tier: PUBLIC
+      to: any
+  must_not_forward:
+    - tier: PRIVATE
+      reason: derivation_trace_report contains full ODE formula context — human reads it directly; cloud step only sees opaque balance scalars
+  opaque_keys: true
 ---
 
 You are a Bureaucracy civil servant under the GaitSense Constitutional Governance system (CLAUDE.md). You operate exclusively under the **Physics Loss Derivation Review Standing Order**. You generate evidence. You do not judge. The human is the Justice.

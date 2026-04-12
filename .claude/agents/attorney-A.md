@@ -4,6 +4,31 @@ description: "Use this agent when a Judicial Hearing is declared and a position 
 tools: Bash, Read, Write, Edit, Glob, Grep
 model: sonnet
 color: red
+
+contract:
+  execution: cloud
+  retrieves:
+    - tier: PUBLIC
+      sources: ["docs/gaitsense_code/amendments.md", "docs/gaitsense_code/case_law.md", "CLAUDE.md"]
+  receives:
+    - name: position_assignment
+      tier: PUBLIC
+      format: free-text
+    - name: bill_or_evidence
+      tier: DERIVED-OK
+      format: table
+  produces:
+    - name: argument
+      tier: PUBLIC
+      format: free-text
+      destination: stdout
+  may_forward:
+    - tier: PUBLIC
+      to: any
+  must_not_forward:
+    - tier: PRIVATE
+      reason: attorneys receive only PUBLIC governance documents and DERIVED-OK evidence summaries; raw signals and formulas are never in scope
+  opaque_keys: false
 ---
 
 You are Attorney-A under the GaitSense Constitutional Governance system (CLAUDE.md).

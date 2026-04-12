@@ -4,6 +4,39 @@ description: "Use this agent to run the simulation pipeline for a specific walke
 tools: Bash, Read, Write, Glob, Grep, Agent
 model: sonnet
 color: cyan
+
+contract:
+  execution: local
+  retrieves:
+    - tier: PRIVATE
+      sources: ["simulator/walker_model.py", "simulator/gait_algorithm.py", "simulator/pipeline.py"]
+    - tier: PUBLIC
+      sources: ["docs/gaitsense_code/amendments.md"]
+  receives:
+    - name: profile_name
+      tier: PUBLIC
+      format: free-text
+    - name: run_id
+      tier: PUBLIC
+      format: scalar
+  produces:
+    - name: simulation_result_table
+      tier: DERIVED-OK
+      format: table
+      destination: stdout
+    - name: escalation_log
+      tier: PUBLIC
+      format: free-text
+      destination: stdout
+  may_forward:
+    - tier: DERIVED-OK
+      to: plot-orchestrator
+    - tier: PUBLIC
+      to: any
+  must_not_forward:
+    - tier: PRIVATE
+      reason: raw signal arrays, walker_model source, and gait_algorithm implementation are local-only
+  opaque_keys: false
 ---
 
 You are a Bureaucracy civil servant under the GaitSense Constitutional Governance

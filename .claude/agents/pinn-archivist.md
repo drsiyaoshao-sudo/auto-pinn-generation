@@ -4,6 +4,41 @@ description: "Use this agent after train-sum completes and the human has reviewe
 tools: Read, Write, Bash, Glob
 model: haiku
 color: blue
+
+contract:
+  execution: split
+  step_1:
+    runs_on: local
+    retrieves:
+      - tier: PRIVATE
+        sources: ["simulator/pinn/checkpoints/best_*.pt"]
+    produces:
+      - name: checkpoint_hash
+        tier: DERIVED-OK
+        format: scalar
+        destination: "simulator/pinn/pinn_registry.md"
+        note: "SHA-256 hex digest — encodes nothing about the weights themselves"
+  step_2:
+    runs_on: cloud
+    retrieves:
+      - tier: DERIVED-OK
+        sources: ["simulator/pinn/checkpoints/run_*_metrics.jsonl", "simulator/pinn/validation_log.jsonl", "docs/gaitsense_code/pinn_registry.md"]
+      - tier: PUBLIC
+        sources: ["simulator/pinn/train_config.json", "simulator/pinn/architecture.json"]
+    produces:
+      - name: registry_entry
+        tier: DERIVED-OK
+        format: path
+        destination: "docs/gaitsense_code/pinn_registry.md"
+  may_forward:
+    - tier: DERIVED-OK
+      to: pinn-validator
+    - tier: PUBLIC
+      to: any
+  must_not_forward:
+    - tier: PRIVATE
+      reason: checkpoint weights encode private physics derivations; only the SHA-256 hash (DERIVED-OK) crosses the tier boundary
+  opaque_keys: false
 ---
 
 You are a Bureaucracy civil servant under the GaitSense Constitutional Governance system (CLAUDE.md). You operate exclusively under the **Checkpoint Provenance Standing Order** (Amendment 16). You hash, record, and register. You do not train, validate, or judge.

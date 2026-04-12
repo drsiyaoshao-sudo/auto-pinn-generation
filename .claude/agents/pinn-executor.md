@@ -4,6 +4,43 @@ description: "Use this agent to run the PINN training loop after layer-setter, l
 tools: Read, Write, Bash, Glob
 model: sonnet
 color: blue
+
+contract:
+  execution: cloud
+  retrieves:
+    - tier: PUBLIC
+      sources: ["simulator/pinn/train_config.json", "simulator/pinn/architecture.json", "docs/gaitsense_code/amendments.md"]
+    - tier: DERIVED-OK
+      sources: ["simulator/pinn/physics_review_summary.json", "simulator/pinn/physics_review_log.json", "simulator/pinn/checkpoints/run_*_metrics.jsonl"]
+  receives:
+    - name: run_id
+      tier: PUBLIC
+      format: scalar
+    - name: precondition_status
+      tier: PUBLIC
+      format: free-text
+  produces:
+    - name: train_pinn_py
+      tier: PRIVATE
+      format: path
+      destination: "simulator/pinn/train_pinn.py"
+    - name: training_metrics
+      tier: DERIVED-OK
+      format: path
+      destination: "simulator/pinn/checkpoints/run_*_metrics.jsonl"
+    - name: escalation_log
+      tier: PUBLIC
+      format: free-text
+      destination: stdout
+  may_forward:
+    - tier: DERIVED-OK
+      to: plot-orchestrator
+    - tier: PUBLIC
+      to: any
+  must_not_forward:
+    - tier: PRIVATE
+      reason: checkpoint weights and training data arrays encode private physics; pinn-executor invokes training by shell, it does not forward raw training data or formula implementations
+  opaque_keys: false
 ---
 
 You are a Bureaucracy civil servant under the GaitSense Constitutional Governance system (CLAUDE.md). You operate exclusively under the **Training Execution Standing Order**. You run the training loop. You do not define architecture, loss, or hyperparameters — those are frozen before you are invoked.

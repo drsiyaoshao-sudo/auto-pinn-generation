@@ -4,6 +4,32 @@ description: "Use this agent when a development stage gate is confirmed met by t
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
 color: purple
+
+contract:
+  execution: cloud
+  retrieves:
+    - tier: PUBLIC
+      sources: ["docs/gaitsense_code/case_law.md", "docs/gaitsense_code/amendments.md", "docs/executive_branch_document/handoff.md", "docs/gaitsense_code/bills/bill_train_config_*.md"]
+  receives:
+    - name: stage_gate_confirmation
+      tier: PUBLIC
+      format: free-text
+  produces:
+    - name: closeout_document
+      tier: PUBLIC
+      format: path
+      destination: "docs/executive_branch_document/stage_*_closeout.md"
+    - name: frozen_case_law_entries
+      tier: PUBLIC
+      format: path
+      destination: "docs/gaitsense_code/case_law.md"
+  may_forward:
+    - tier: PUBLIC
+      to: any
+  must_not_forward:
+    - tier: PRIVATE
+      reason: stage-compactor operates on governance records only; no physics data, no formulas, no training artifacts
+  opaque_keys: false
 ---
 
 You are a Bureaucracy civil servant under the GaitSense Constitutional Governance system

@@ -4,6 +4,28 @@ description: "Use this agent when a new code is generated to check package depen
 tools: Edit, NotebookEdit, Write, Bash, Glob
 model: haiku
 color: yellow
+
+contract:
+  execution: cloud
+  retrieves:
+    - tier: PUBLIC
+      sources: ["requirements.txt", "pyproject.toml", "platformio.ini"]
+  receives:
+    - name: package_request
+      tier: PUBLIC
+      format: free-text
+  produces:
+    - name: install_log
+      tier: PUBLIC
+      format: free-text
+      destination: stdout
+  may_forward:
+    - tier: PUBLIC
+      to: any
+  must_not_forward:
+    - tier: PRIVATE
+      reason: package-manager only installs dependencies; it never reads physics code or data files
+  opaque_keys: false
 ---
 
 You are a Bureaucracy civil servant under the GaitSense Constitutional Governance system (CLAUDE.md). You operate exclusively under the **Package Management Standing Order**. You have no authority over any other standing order.

@@ -4,6 +4,47 @@ description: "Use this agent to derive physics loss terms and loss weight vector
 tools: Read, Write, Glob
 model: sonnet
 color: orange
+
+contract:
+  execution: split
+  step_1:
+    runs_on: local
+    retrieves:
+      - tier: PRIVATE
+        sources: ["simulator/walker_model.py", "simulator/pinn/physics_loss.py", "docs/gaitsense_code/bills/bill_loss_weights_v*.md", "docs/gaitsense_code/bills/bill_physics_loss_v*.md"]
+      - tier: PUBLIC
+        sources: ["docs/gaitsense_code/amendments.md"]
+    produces:
+      - name: lambda_scalar_dict
+        tier: DERIVED-OK
+        format: json-summary
+        destination: "simulator/pinn/physics_review_summary.json"
+        note: "opaque keys applied — lambda_ode→w0, lambda_vel→w1, lambda_phase→w2"
+  step_2:
+    runs_on: cloud
+    retrieves:
+      - tier: DERIVED-OK
+        sources: ["simulator/pinn/physics_review_summary.json"]
+      - tier: PUBLIC
+        sources: ["docs/gaitsense_code/amendments.md", "simulator/pinn/architecture.json"]
+    produces:
+      - name: physics_loss_py
+        tier: PRIVATE
+        format: path
+        destination: "simulator/pinn/physics_loss.py"
+      - name: loss_weights_bill
+        tier: PUBLIC
+        format: path
+        destination: "docs/gaitsense_code/bills/bill_loss_weights_v*.md"
+  may_forward:
+    - tier: DERIVED-OK
+      to: physics-reviewer
+    - tier: PUBLIC
+      to: any
+  must_not_forward:
+    - tier: PRIVATE
+      reason: derivation formulas in bill_loss_weights and bill_physics_loss are trade secrets; cloud step receives opaque scalars only
+  opaque_keys: true
 ---
 
 You are a Legislature agent under the GaitSense Constitutional Governance system (CLAUDE.md). You operate under the **Physics Loss Bill Standing Order**. Every output you produce requires human ratification before it takes effect. You are not Bureaucracy — you propose, you do not execute autonomously.
