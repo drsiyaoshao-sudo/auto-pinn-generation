@@ -11,6 +11,12 @@ Hardware: Seeed XIAO nRF52840 Sense — nRF52840 Cortex-M4F + LSM6DS3TR-C 6-DOF 
 
 Three interlocking systems form the technical moat: a **hybrid intelligence pipeline** that keeps physics IP private while using cloud reasoning, an **auto-governed PINN generation loop** that turns physical equations into deployable firmware models, and a **constitutional human-AI coexistence model** where humans decide and agents execute.
 
+> **The core insight: privacy was not designed — it emerged.**
+>
+> The two Articles are fully public. Anyone can read them. But because Article I requires every parameter to trace to a physical observable (a *measurement*), and Article II requires every agent output to be empirical evidence (a *measurement*), the system naturally produces a privacy boundary: **derivations stay local, measurements are shareable.**
+>
+> A measurement can be published without disclosing the equation that produced it. That is why the cloud model sees signal shapes and not source code — not because we added an access control layer, but because the constitution only ever produces measurements as output. The three-tier corpus classification (PRIVATE · DERIVED-OK · PUBLIC) is a formalization of what the Articles already implied. You cannot violate it without violating Article I or Article II first.
+
 ---
 
 ### 1. Hybrid Intelligence Pipeline — Privacy by Derivation
