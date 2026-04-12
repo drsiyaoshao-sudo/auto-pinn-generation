@@ -42,7 +42,7 @@ Now run the hybrid demo. Execute both steps in sequence:
 
 STEP 1: Run the local model comparison agent.
 Call this exact command from the repo root:
-    python hybrid/local_agents/run_model_compare.py --good $GOOD --bad $BAD
+    GAITSENSE_DEMO=1 python hybrid/local_agents/run_model_compare.py --good $GOOD --bad $BAD
 
 Where $GOOD is the first argument (default: v1) and $BAD is the second argument (default: random).
 Parse $ARGUMENTS: first word = good_run_id, second word = bad_run_id. If empty, use defaults.
