@@ -11,3 +11,4 @@ simulator/pinn/__pycache__/
 simulator/__pycache__/
 .env
 # API keys — never commit
+hybrid/training/data/
