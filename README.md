@@ -7,6 +7,184 @@ Hardware: Seeed XIAO nRF52840 Sense — nRF52840 Cortex-M4F + LSM6DS3TR-C 6-DOF 
 
 ---
 
+## System Architecture — How It Works
+
+Three interlocking systems form the technical moat: a **hybrid intelligence pipeline** that keeps physics IP private while using cloud reasoning, an **auto-governed PINN generation loop** that turns physical equations into deployable firmware models, and a **constitutional human-AI coexistence model** where humans decide and agents execute.
+
+---
+
+### 1. Hybrid Intelligence Pipeline — Privacy by Derivation
+
+The core insight: **the derivation chain is the privacy boundary**, not a policy. By the time data reaches a cloud model, the equations that produced it are gone — only shapes remain. A competitor who intercepts every cloud API call sees waveforms, never formulas.
+
+```mermaid
+flowchart TD
+    subgraph PRIVATE["🔒  LOCAL — Physics IP Never Leaves"]
+        direction TB
+        PRIM["Article I Primitives\nVertical Oscillation · Cadence · Step Length"]
+        WM["walker_model.py\nDerivation equations\n~3,900 tokens of IP"]
+        CKPT["PINN Checkpoint\nbest_v1.pt · trained weights"]
+        LOCAL_LLM["Local Agent\nqwen2.5:0.5b\n(parse only — never reads code)"]
+        PRIM --> WM
+        WM --> LOCAL_LLM
+        CKPT --> LOCAL_LLM
+    end
+
+    subgraph BOUNDARY["⚡  DERIVATION BOUNDARY\n~23,900 tokens shielded · 26× shield ratio"]
+        PNG["Comparison Plot PNG\nSignal shapes only\nNo equations · No weights"]
+        LOCAL_LLM -->|"DERIVED-OK\nshapes only"| PNG
+    end
+
+    subgraph CLOUD["☁️  CLOUD — Derived Evidence + Public Rules Only"]
+        direction TB
+        PRIMER["Article I Physics Primer\n~674 tokens · PUBLIC"]
+        CLAUDE["Claude Sonnet\nPhysics reasoning\nfrom shapes + public definitions"]
+        INSIGHT["Physics Insight Text\nGrounded in gait primitives\nPUBLIC · safe to publish"]
+        PNG --> CLAUDE
+        PRIMER --> CLAUDE
+        CLAUDE --> INSIGHT
+    end
+
+    subgraph HUMAN["👤  JUSTICE — Human Decision Boundary\n(Article II — Learner-in-the-Loop)"]
+        direction TB
+        EVIDENCE["Empirical Evidence\nPlots · UART tables · Test results"]
+        JUSTICE["Human reviews\nNo agent self-approves"]
+        DECISION{"Decision"}
+        INSIGHT --> EVIDENCE
+        EVIDENCE --> JUSTICE
+        JUSTICE --> DECISION
+    end
+
+    style PRIVATE fill:#fff0f0,stroke:#cc4444,stroke-width:2px
+    style BOUNDARY fill:#fff8e0,stroke:#cc8800,stroke-width:2px
+    style CLOUD fill:#f0f4ff,stroke:#4466cc,stroke-width:2px
+    style HUMAN fill:#f0fff4,stroke:#44aa66,stroke-width:2px
+```
+
+---
+
+### 2. PINN Auto-Generation — Physics-to-Firmware Pipeline
+
+The PINN (Physics-Informed Neural Network) is not hand-tuned. It is automatically generated from first-principles physics equations through a governed pipeline. Every parameter change goes through the same loop: physics → data → model → validate → simulate → gate.
+
+```mermaid
+flowchart LR
+    subgraph PHYSICS["Physics Foundation (Article I)"]
+        direction TB
+        VO["Vertical Oscillation\ncm"]
+        CAD["Cadence\nsteps/min"]
+        SL["Step Length\nm"]
+    end
+
+    subgraph GENERATION["Auto-Generation Loop"]
+        direction TB
+        WM2["walker_model.py\nGround truth IMU sequences"]
+        DATA["Synthetic Training Data\nX_train · Y_train · X_val · Y_val\n(25+ randomised WalkerProfiles)"]
+        TRAIN["PINN Training\ntrain_pinn.py\nFourier feature network · physics losses"]
+        CKPT2["Best Checkpoint\nbest_{run_id}.pt"]
+    end
+
+    subgraph GOVERNANCE["Constitutional Gate"]
+        direction TB
+        VALIDATOR["pinn-validator agent\nAmendment 19 fidelity check\n<15% per-axis error on all 4 profiles"]
+        PHYSICS_R["physics-reviewer agent\nAmendment 20 balance check\nODE · velocity · phase loss ratios"]
+        PASS{"Gate\nPASS?"}
+        BILL_REQ["Legislature\nBill required\nhuman must approve change"]
+    end
+
+    subgraph DEPLOY["Deployment"]
+        direction TB
+        SIM["Gait Algorithm Simulation\nrun_anchor_sim.py\n4 anchor profiles · step detection"]
+        FW["Firmware Thresholds\nAmendment 13 — change requires Bill"]
+        CLINIC["Clinical Output\nSymmetry Index · Cadence · Step Length"]
+    end
+
+    VO & CAD & SL --> WM2
+    WM2 --> DATA
+    DATA --> TRAIN
+    TRAIN --> CKPT2
+    CKPT2 --> VALIDATOR
+    CKPT2 --> PHYSICS_R
+    VALIDATOR & PHYSICS_R --> PASS
+    PASS -->|"FAIL"| BILL_REQ
+    BILL_REQ -.->|"enacted Bill"| TRAIN
+    PASS -->|"PASS"| SIM
+    SIM --> FW
+    FW --> CLINIC
+
+    style PHYSICS fill:#fff0f0,stroke:#cc4444,stroke-width:2px
+    style GENERATION fill:#f5f0ff,stroke:#7744cc,stroke-width:2px
+    style GOVERNANCE fill:#fff8e0,stroke:#cc8800,stroke-width:2px
+    style DEPLOY fill:#f0fff4,stroke:#44aa66,stroke-width:2px
+```
+
+---
+
+### 3. Human-AI Coexistence — The Constitutional Governance Model
+
+Agents do not self-direct. Every agent has a declared role, a corpus access contract, and a hard stop at the human decision boundary. The human is not a rubber stamp — they are the only entity that connects derived evidence to clinical meaning.
+
+```mermaid
+flowchart TD
+    subgraph AGENTS["AI Agents — Execute and Propose"]
+        direction LR
+        BUREAU["Bureaucracy Agents\nplot · build · test · commit\nAutonomous — no approval needed"]
+        LEG["Legislature Agents\nlayer-setter · pinn-compiler · loss-setter\nPropose Bills with physical evidence"]
+        JUD["Judiciary Agents\nattorney-A · attorney-B\nArgue assigned positions only\nNever volunteer a verdict"]
+    end
+
+    subgraph BOUNDARY2["Constitutional Boundary"]
+        EVIDENCE2["Empirical Evidence Package\nSignal plots · UART tables · loss curves\nTest results · SHA-256 checkpoint hashes\n\nAll DERIVED-OK — no raw IP"]
+    end
+
+    subgraph HUMAN2["Human — The Justice"]
+        direction TB
+        REVIEW["Reviews evidence\nArticle II: empirical basis only\n(Benjamin Franklin Principle)"]
+        RULING["Rules on Bills and conflicts\nArticle II: best patient outcome\n(Thomas Jefferson Principle)"]
+        RATIFY["Ratifies Amendments\n>60% supermajority\nArticles I and II are immune"]
+    end
+
+    subgraph RECORD["Institutional Memory"]
+        direction LR
+        CASELAW["case_law.md\nBinding precedents\nAll agents must apply"]
+        AMEND["amendments.md\n20 ratified operational rules"]
+        BILLS["Bills archive\nEvery parameter change traceable\nto physical evidence"]
+    end
+
+    BUREAU -->|"DERIVED-OK output"| EVIDENCE2
+    LEG -->|"Bill + evidence"| EVIDENCE2
+    JUD -->|"Argument + citations"| EVIDENCE2
+    EVIDENCE2 --> REVIEW
+    REVIEW --> RULING
+    RULING --> RATIFY
+    RULING -->|"ruling recorded"| CASELAW
+    RATIFY -->|"amendment recorded"| AMEND
+    RULING -->|"Bill enacted"| BILLS
+    CASELAW & AMEND & BILLS -->|"binding on all agents"| AGENTS
+
+    style AGENTS fill:#f0f4ff,stroke:#4466cc,stroke-width:2px
+    style BOUNDARY2 fill:#fff8e0,stroke:#cc8800,stroke-width:2px
+    style HUMAN2 fill:#f0fff4,stroke:#44aa66,stroke-width:2px
+    style RECORD fill:#f9f9f9,stroke:#888888,stroke-width:2px
+```
+
+---
+
+### Key Numbers
+
+| Metric | Value |
+|--------|-------|
+| PRIVATE tokens shielded from cloud | ~23,900 per inference call |
+| Tokens actually sent to cloud | ~674 + image |
+| Shield ratio | **26×** |
+| Physics primitives (Article I) | 3 — all parameters trace to these |
+| Agent corpus contracts enforced | 21 agents, RAG-gated |
+| PINN profiles validated | 4 walker profiles, 15% per-axis error threshold |
+| Human decision gates | Every Bill, every Judicial ruling, every Amendment |
+| Clinical output | Symmetry Index — the only number that reaches the patient |
+
+---
+
 ## The Workflow
 
 This project runs under a constitutional governance model that functions as a natural CI/CD system. Understanding it before touching any code will save you significant time.
