@@ -5,7 +5,7 @@ Skill contract:
   corpus tier:  PUBLIC + DERIVED-OK only (caller is responsible for not
                 passing PRIVATE content into prompts sent to this wrapper)
   execution:    local
-  model target: configurable — default qwen2.5-coder:7b
+  model target: configurable — default qwen2.5:0.5b
                 swap to any Ollama-hosted model without changing callers
 
 Usage (as library):
@@ -20,13 +20,13 @@ Usage (as CLI smoke test):
 
 import json
 import os
-from typing import Generator
+from typing import Generator, Optional
 
 import requests
 
 # ── defaults — override via env vars ─────────────────────────────────────────
 DEFAULT_HOST  = os.environ.get("OLLAMA_HOST",  "http://localhost:11434")
-DEFAULT_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5-coder:7b")
+DEFAULT_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:0.5b")
 
 # connect timeout short (server is local); read timeout long (generation)
 TIMEOUT = (5, 600)
@@ -48,7 +48,7 @@ class LocalLLM:
         self.host    = host
         self.chat_url = f"{host}/api/chat"
 
-    def chat(self, prompt: str, system: str | None = None) -> str:
+    def chat(self, prompt: str, system: Optional[str] = None) -> str:
         """
         Single-turn chat. Blocks until complete response received.
         Returns full response string.
@@ -73,7 +73,7 @@ class LocalLLM:
                 break
         return "".join(chunks)
 
-    def stream(self, prompt: str, system: str | None = None) -> Generator[str, None, None]:
+    def stream(self, prompt: str, system: Optional[str] = None) -> Generator[str, None, None]:
         """
         Streaming chat. Yields tokens as they arrive.
         Use when you want to print progress for long tasks.
@@ -147,7 +147,7 @@ if __name__ == "__main__":
 
     if not llm.is_available():
         print(f"[ollama_client] FAIL — model '{llm.model}' not available")
-        print("[ollama_client] run: ollama pull qwen2.5-coder:7b")
+        print("[ollama_client] run: ollama pull qwen2.5:0.5b")
         raise SystemExit(1)
 
     print("[ollama_client] model available — running smoke test...")
