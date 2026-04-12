@@ -51,6 +51,23 @@ if _env_path.exists():
             _k, _v = _line.split("=", 1)
             os.environ.setdefault(_k.strip(), _v.strip())
 
+# ── Early API key check — fail before accounting block, not after ─────────────
+def _check_api_key():
+    key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not key:
+        print()
+        print("ERROR: ANTHROPIC_API_KEY not set.")
+        print()
+        print("Add it to the repo .env file (git-ignored, never committed):")
+        print(f"  echo 'ANTHROPIC_API_KEY=sk-ant-...' >> {_REPO_ROOT}/.env")
+        print()
+        print("Or export it for this session:")
+        print("  export ANTHROPIC_API_KEY=sk-ant-...")
+        print()
+        sys.exit(1)
+
+_check_api_key()
+
 # ── PRIVATE corpus token counts (pre-measured; never sent) ───────────────────
 _PRIVATE_CORPUS = [
     ("simulator/walker_model.py",              3878),
