@@ -9,3 +9,5 @@ simulator/pinn/training_data/*.npy
 simulator/pinn/checkpoints/*.pt
 simulator/pinn/__pycache__/
 simulator/__pycache__/
+.env
+# API keys — never commit
