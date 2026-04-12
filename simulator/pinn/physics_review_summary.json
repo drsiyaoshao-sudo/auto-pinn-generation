@@ -1,0 +1,19 @@
+{
+  "date": "2026-04-04",
+  "bill_reviewed": "bill_loss_weights_v1",
+  "all_terms_traced": true,
+  "balance_ok": false,
+  "balance_ratio_w0_w1": 62.68469,
+  "balance_ratio_w0_w2": null,
+  "weighted_loss_means": {
+    "w0": 354.66695,
+    "w1": 5.657952,
+    "w2": 0.0
+  },
+  "structural_minimum_detected": true,
+  "structural_minimum_notes": "L_ODE converges to 44-46 rather than near-zero. Cause: double-integration accumulates gravity DC offset into large z_pred. Human decision required on remediation path.",
+  "plot_path": "docs/executive_branch_document/plots/pinn_loss_derivation.png",
+  "human_decision": "PENDING",
+  "_key_map": "PRIVATE \u2014 w0=lambda_ode, w1=lambda_vel, w2=lambda_phase. Do not include in derived-ok output.",
+  "_corpus_tier": "DERIVED-OK"
+}
