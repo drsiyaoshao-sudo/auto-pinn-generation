@@ -86,7 +86,7 @@ The tier governs which LLM can retrieve it, and what can be forwarded upstream.
 | `docs/gaitsense_code/bills/bill_data_config_v1.md` | **PRIVATE** | Contains parameter distributions derived from population assumptions — patentable |
 | `docs/gaitsense_code/bills/bill_physics_loss_v2.md` | **PRIVATE** | Contains true double-integration derivation and algebraic collapse proof — trade secret |
 
-### Source Code
+### Source Code — Python Simulation
 
 | File | Tier | Reason |
 |---|---|---|
@@ -95,7 +95,53 @@ The tier governs which LLM can retrieve it, and what can be forwarded upstream.
 | `simulator/pinn/train_pinn.py` | **PRIVATE** | Training loop with physics ramp schedule — implementation detail |
 | `simulator/pinn/generate_training_data.py` | **PRIVATE** | Data generation logic reveals population parameter assumptions |
 | `simulator/walker_model.py` | **PRIVATE** | Biomechanical derivation chain — hs_impact, peak_angvel formulas — core IP |
+| `simulator/gait_algorithm.py` | **PRIVATE** | Python reference implementation of terrain-aware step detector — mirrors firmware IP |
+| `simulator/pipeline.py` | **PRIVATE** | End-to-end pipeline wiring — reveals full processing chain and profile selection logic |
 | `simulator/pinn/__init__.py` | PUBLIC | Empty init |
+
+### Source Code — Firmware C (Gap fix 2026-04-18)
+
+All firmware C source contains clinically-tuned algorithm constants and calibration logic. Must not reach any LLM context.
+
+| File | Tier | Reason |
+|---|---|---|
+| `src/gait/step_detector.c` / `.h` | **PRIVATE** | Adaptive threshold logic, 30 dps push-off gate, 5.0 m/s² acc threshold — clinically tuned IP |
+| `src/gait/phase_segmenter.c` / `.h` | **PRIVATE** | Stance/swing phase gate constants, terrain-aware filter coefficients |
+| `src/gait/rolling_window.c` / `.h` | **PRIVATE** | 200-step window SI computation, `compute_si_x10()` — clinical output formula |
+| `src/gait/foot_angle.c` / `.h` | **PRIVATE** | Complementary filter constants, drift correction gain |
+| `src/gait/gait_engine.c` / `.h` | **PRIVATE** | Top-level algorithm orchestration — reveals full processing chain |
+| `src/imu/calibration.c` / `.h` | **PRIVATE** | NVS-persisted per-device bias/scale offsets — calibration IP |
+| `src/imu/imu_reader.c` / `.h` | **PRIVATE** | FIFO watermark interrupt logic, 208 Hz ODR configuration |
+| `src/imu/imu_sim_reader.c` | **PRIVATE** | Simulation shim — mirrors hardware reader; reveals register timing |
+| `src/ble/ble_gait_svc.c` / `.h` | **PRIVATE** | GATT service definition, snapshot struct layout, MTU negotiation |
+| `src/session/session_mgr.c` / `.h` | **PRIVATE** | Session lifecycle, button debounce timing |
+| `src/session/snapshot_buffer.c` / `.h` | **PRIVATE** | RAM backend + flash fallback; `rolling_snapshot_t` struct layout |
+| `src/main.c` | **PRIVATE** | Entry point — reveals Zephyr thread priorities and boot sequence |
+
+### Firmware Binary (Gap fix 2026-04-18)
+
+| File | Tier | Reason |
+|---|---|---|
+| `*.elf` / `firmware/*.elf` | **PRIVATE** | Compiled binary — algorithm thresholds extractable via `strings` or disassembly. Also gitignored. Note: `zephyr_sim_2026-03-28.elf` was committed before this classification — treat as PRIVATE, do not forward to any LLM context. |
+
+### Sensor Peripheral Stubs (Gap fix 2026-04-18)
+
+| File | Tier | Reason |
+|---|---|---|
+| `renode/lsm6ds3_stub.py` | **PRIVATE** | LSM6DS3TR-C register map and FIFO protocol emulation — register-level detail often derived from NDA datasheet |
+| `renode/sim_imu_stub.py` | PUBLIC | File-index mechanism only — no sensor register logic |
+| `renode/sim_uart_stub.py` | PUBLIC | UART DMA capture shim — no algorithm content |
+
+### Patient Session Data (Gap fix 2026-04-18)
+
+No patient data exists yet. Pre-classified to govern future exports before first hardware session.
+
+| Resource | Tier | Reason |
+|---|---|---|
+| `session_exports/*.bin` | **PRIVATE / PHI** | Raw `rolling_snapshot_t` binary exports — contains actual patient gait asymmetry measurements |
+| `session_exports/*.csv` | **PRIVATE / PHI** | Decoded session CSVs — step timing, SI per step, cadence; patient-identifiable by session timestamp |
+
+**PHI handling rule:** Session export files must never leave local infrastructure. Scalar summaries (mean SI, session step count) may be forwarded as DERIVED-OK with opaque keys only after identity de-linking. No cloud LLM may receive session export content.
 
 ### Configuration Files
 

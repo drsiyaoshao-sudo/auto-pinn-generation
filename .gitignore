@@ -1,3 +1,4 @@
+.venv/
 .pio
 .vscode/.browse.c_cpp.db*
 .vscode/c_cpp_properties.json
@@ -12,3 +13,19 @@ simulator/__pycache__/
 .env
 # API keys — never commit
 hybrid/training/data/
+
+# Distillation binaries — large, regenerate from LoRA adapter + llama.cpp
+hybrid/training/checkpoints/dispatch_merged/
+hybrid/training/checkpoints/gaitsense_dispatch_f16.gguf
+hybrid/training/checkpoints/gaitsense_dispatch_q4.gguf
+hybrid/training/checkpoints/dispatch_lora/checkpoint-*/
+
+# Python cache
+hybrid/__pycache__/
+hybrid/wrapper/__pycache__/
+
+# Firmware binaries — thresholds extractable from ELF; PRIVATE per corpus_classification.md
+*.elf
+
+# Patient session exports — PHI; must never leave local infrastructure
+session_exports/

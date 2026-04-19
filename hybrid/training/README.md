@@ -7,6 +7,51 @@ engineering shorthand.
 
 ---
 
+## Distillation Pipeline
+
+```mermaid
+flowchart TD
+    A["Claude Haiku ☁️\n(Teacher — cloud)"]
+    B["generate_dispatch_pairs.py\n1,360 JSONL pairs\n'plot stairs pathological'\n→ {profile, mode}"]
+    C["Qwen2.5-0.5B-Instruct\n(Student base — HuggingFace)"]
+    D["LLaMA-Factory LoRA fine-tune\nlora_rank=16, fp16\n5 epochs, ~4 min RTX 2080 Ti"]
+    E["Merged checkpoint\nhybrid/training/checkpoints/dispatch_merged"]
+    F["llama.cpp convert\nQ4_K_M GGUF\n~350 MB"]
+    G["Ollama\ngaitsense-dispatch model"]
+    H["Local dispatch agents\nrun_model_compare.py\nrun_plotter.py\nrun_train_sum.py\nrun_uart_reader.py"]
+    I["OLLAMA_MODEL=gaitsense-dispatch\n(one env var, no code changes)"]
+
+    A -->|"paraphrases seed examples\nvia Anthropic API"| B
+    B -->|"chat JSONL\n(sharegpt format)"| D
+    C -->|"base weights"| D
+    D -->|"LoRA adapter\n+ merge"| E
+    E -->|"convert_hf_to_gguf.py"| F
+    F -->|"ollama create"| G
+    G -->|"temperature 0\ndeterministic JSON"| H
+    I -.->|"switches inference path"| H
+
+    subgraph PRIVATE ["🔒 Local — never leaves machine"]
+        C
+        D
+        E
+        F
+        G
+        H
+    end
+
+    subgraph CLOUD ["☁️ Cloud — seed paraphrase only"]
+        A
+        B
+    end
+
+    style PRIVATE fill:#1a2a1a,stroke:#4a7a4a,color:#ccffcc
+    style CLOUD fill:#1a1a2a,stroke:#4a4a7a,color:#ccccff
+```
+
+**Privacy boundary:** Claude Haiku only sees generic engineering-language paraphrases (no IMU equations, no PINN weights, no patient data). The fine-tuned model and all inference run fully local.
+
+---
+
 ## 0. Linux GPU Setup
 
 **Target: Ubuntu 22.04 + RTX 2080 Ti (11 GB VRAM, Turing sm_75)**

@@ -1,2 +1,7 @@
 torch==2.2.2
-scikit-learn==0.24.2
+scipy
+matplotlib
+requests
+scikit-learn
+numpy<2
+anthropic

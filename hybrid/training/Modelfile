@@ -1,0 +1,4 @@
+FROM /home/siyao/Documents/crucible/auto-pinn-generation/hybrid/training/checkpoints/gaitsense_dispatch_q4.gguf
+PARAMETER temperature 0.0
+PARAMETER top_p 1.0
+PARAMETER repeat_penalty 1.0
