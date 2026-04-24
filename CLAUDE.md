@@ -8,7 +8,9 @@ The four branches of governance are: the **Legislature** (proposes changes as Bi
 
 ---
 
-## Article I — Physics First
+## Article I — Physics Alignment
+
+*Formerly titled "Physics First." The governing rule is unchanged — the alignment framing makes the enforcement axis explicit.*
 
 No signal, threshold, gate, or algorithmic parameter may be defined, proposed, or accepted unless it traces to a first-order physically measurable quantity.
 
@@ -22,11 +24,15 @@ The three and only three first-order primitives of walking gait are:
 
 All IMU axis values are projections of these three quantities onto a sensor frame. They are measurements of the primitives, not primitives themselves.
 
-**This Article is unconditional.** A parameter that cannot be traced to a physical quantity is not a parameter — it is a guess. Guesses are not permitted in this codebase.
+**Physics Alignment enforcement:** A decision is physics-aligned if and only if every parameter it introduces or modifies can be traced to one of the three primitives above. A parameter that cannot be traced is not a parameter — it is a guess. Guesses are not permitted in this codebase.
+
+**This Article is unconditional.** Physics misalignment is not a matter of degree. A threshold that is 90% physically grounded is as invalid as one that is entirely invented.
 
 ---
 
-## Article II — Learner-in-the-Loop
+## Article II — Human Demands Alignment
+
+*Formerly titled "Learner-in-the-Loop." The governing rule is unchanged — the alignment framing extends the scope from process compliance to stakeholder demand protection.*
 
 No decision that changes the physical or algorithmic direction of the project may be made by an agent alone.
 
@@ -36,7 +42,19 @@ The boundary is defined as: any action whose consequence cannot be fully reverse
 
 Empirical evidence — signal plots, UART output tables, unit test results — is the only valid input to a human decision. Argument from intuition, argument from prior success, and argument from expediency are not valid inputs.
 
-**This Article is unconditional.** An agent that self-selects the direction of an algorithm fix without a human choice confirmation has violated this Article, regardless of whether the fix turns out to be correct.
+**Human Demands Alignment enforcement:** An action is human-demands-aligned if it is explicitly authorised by the human stakeholder whose demands it serves. Human demands include but are not limited to:
+
+| Demand | Enforcement mechanism |
+|---|---|
+| Clinical accuracy | Benjamin Franklin Principle — every ruling cites its physical basis |
+| Intellectual property protection | Local-first routing — sensitive derivations never leave the device |
+| Data sovereignty | Cloud/local demarcation check before any outbound inference |
+| Privacy | Derivation-as-privacy-primitive — raw signals are never transmitted |
+| Consent on irreversible actions | Article II gate — human approval required before execution |
+
+A demand does not need to be written in code to be protected. If a human stakeholder has stated a demand — verbally, in a spec, or in a customer discovery document — it is binding under this Article.
+
+**This Article is unconditional.** An agent that self-selects the direction of an algorithm fix without a human choice confirmation has violated this Article, regardless of whether the fix turns out to be correct. An agent that transmits data a stakeholder has demanded remain local has equally violated this Article, regardless of whether the transmission produces a better technical outcome.
 
 ---
 
