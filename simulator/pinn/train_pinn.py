@@ -73,7 +73,8 @@ def main():
     grad_clip_norm     = cfg["grad_clip_norm"]
     seed               = cfg["seed"]
     log_every          = cfg["log_every"]
-    lambda_ode         = cfg["lambda_ode"]
+    lambda_gyy         = cfg["lambda_gyy"]
+    lambda_az          = cfg["lambda_az"]
     lambda_vel         = cfg["lambda_vel"]
     lambda_phase       = cfg["lambda_phase"]
     run_id             = cfg.get("run_id", "v1")
@@ -86,8 +87,9 @@ def main():
         )
         epochs_max = args.max_epochs
 
-    checkpoint_path = ckpt_dir / f"best_{run_id}.pt"
-    metrics_path    = ckpt_dir / f"run_{run_id}_metrics.jsonl"
+    checkpoint_path        = ckpt_dir / f"best_{run_id}.pt"
+    warmup_checkpoint_path = ckpt_dir / f"warmup_best_{run_id}.pt"
+    metrics_path           = ckpt_dir / f"run_{run_id}_metrics.jsonl"
 
     ckpt_dir.mkdir(parents=True, exist_ok=True)
 
@@ -118,7 +120,7 @@ def main():
 
     print(f"Training samples: {N_train},  Val samples: {N_val},  Time steps: {T_steps},  Output dim: {out_dim}")
     print(f"Config: lr={lr_initial}, epochs={epochs_max}, batch={batch_size}, warmup={warmup_epochs}")
-    print(f"Lambda: ode={lambda_ode}, vel={lambda_vel}, phase={lambda_phase}")
+    print(f"Lambda: gyy={lambda_gyy}, az={lambda_az}, vel={lambda_vel}, phase={lambda_phase}")
 
     # ── DataLoader ───────────────────────────────────────────────────────────
     train_dataset = TensorDataset(X_train, Y_train)
@@ -159,12 +161,14 @@ def main():
     data_criterion  = nn.MSELoss()
 
     # ── Training state ────────────────────────────────────────────────────────
-    best_val              = float("inf")
-    best_epoch            = 0
+    best_val               = float("inf")   # post-warmup: best (data + physics)
+    best_epoch             = 0
+    best_warmup_score      = float("inf")   # warmup: best raw physics (no ramp divisor)
+    best_warmup_epoch      = 0
     last_improvement_epoch = 0
     consecutive_increases  = 0
-    prev_val_total        = float("inf")
-    metrics_log           = []
+    prev_val_total         = float("inf")
+    metrics_log            = []
 
     print(f"\nStarting training — run_id={run_id}, checkpoint={checkpoint_path}")
     print("-" * 90)
@@ -175,6 +179,9 @@ def main():
 
         # Physics warmup ramp: 0 → 1 over warmup_epochs
         physics_weight = min(epoch / max(warmup_epochs, 1), 1.0)
+        # Amendment 20 enforcement: data_weight = 0 during warmup so physics >= 100%
+        # of total loss. Data enters only after physics warmup is complete.
+        data_weight = 0.0 if epoch <= warmup_epochs else 1.0
 
         # ── Train one epoch ──────────────────────────────────────────────────
         model.train()
@@ -200,7 +207,9 @@ def main():
             cadence     = X_batch[:, 0]    # (B,) spm
             step_length = X_batch[:, 1]    # (B,) m
             vert_osc    = X_batch[:, 2]    # (B,) cm
+            slope_deg   = X_batch[:, 3]    # (B,) degrees
             stance_frac = X_batch[:, 4]    # (B,) dimensionless
+            terrain_int = X_batch[:, 9]    # (B,) 0=flat,1=slope,2=stairs
             step_period = 60.0 / (cadence + 1e-6)  # (B,) s — guard against /0
 
             # Expand per-profile scalars to (B*T_steps,)
@@ -210,6 +219,8 @@ def main():
             cadence_exp     = expand_scalar(cadence)
             step_length_exp = expand_scalar(step_length)
             vert_osc_exp    = expand_scalar(vert_osc)
+            slope_deg_exp   = expand_scalar(slope_deg)
+            terrain_int_exp = expand_scalar(terrain_int)
             stance_frac_exp = expand_scalar(stance_frac)
             step_period_exp = expand_scalar(step_period)
 
@@ -221,21 +232,25 @@ def main():
                 vert_osc_cm=vert_osc_exp,
                 stance_frac=stance_frac_exp,
                 step_period_s=step_period_exp,
-                lambda_ode=lambda_ode,
+                slope_deg=slope_deg_exp,
+                terrain_int=terrain_int_exp,
+                lambda_gyy=lambda_gyy,
+                lambda_az=lambda_az,
                 lambda_vel=lambda_vel,
                 lambda_phase=lambda_phase,
                 physics_weight_ramp=physics_weight,
                 t_steps=T_steps,
             )
 
-            total_loss = loss_data + phys_dict["physics"]
+            total_loss = data_weight * loss_data + phys_dict["physics"]
 
             # NaN/Inf guard
             if not torch.isfinite(total_loss):
                 print(
                     f"\nFATAL: NaN or Inf loss detected at epoch {epoch}, batch {n_batches+1}. "
                     f"loss_data={loss_data.item():.6f}, "
-                    f"l_ode={phys_dict['l_ode'].item():.6f}, "
+                    f"l_gyy={phys_dict['l_gyy'].item():.6f}, "
+                    f"l_az={phys_dict['l_az'].item():.6f}, "
                     f"l_vel={phys_dict['l_vel'].item():.6f}, "
                     f"l_phase={phys_dict['l_phase'].item():.6f}. "
                     "HALTING — corrupt gradients. Escalate to human."
@@ -271,7 +286,9 @@ def main():
         cadence_v     = X_val[:, 0]
         step_length_v = X_val[:, 1]
         vert_osc_v    = X_val[:, 2]
+        slope_deg_v   = X_val[:, 3]
         stance_frac_v = X_val[:, 4]
+        terrain_int_v = X_val[:, 9]
         step_period_v = 60.0 / (cadence_v + 1e-6)
 
         def expand_val(s):
@@ -293,17 +310,21 @@ def main():
             vert_osc_cm=expand_val(vert_osc_v),
             stance_frac=expand_val(stance_frac_v),
             step_period_s=expand_val(step_period_v),
-            lambda_ode=lambda_ode,
+            slope_deg=expand_val(slope_deg_v),
+            terrain_int=expand_val(terrain_int_v),
+            lambda_gyy=lambda_gyy,
+            lambda_az=lambda_az,
             lambda_vel=lambda_vel,
             lambda_phase=lambda_phase,
             physics_weight_ramp=physics_weight,
             t_steps=T_steps,
         )
 
-        val_ode   = phys_val["l_ode"].item()
+        val_gyy   = phys_val["l_gyy"].item()
+        val_az    = phys_val["l_az"].item()
         val_vel   = phys_val["l_vel"].item()
         val_phase = phys_val["l_phase"].item()
-        val_total = val_data + phys_val["physics"].item()
+        val_total = data_weight * val_data + phys_val["physics"].item()
 
         # ── Three-strike / 10-epoch divergence rule (Amendment 7) ────────────
         if val_total < prev_val_total:
@@ -324,12 +345,32 @@ def main():
 
         prev_val_total = val_total
 
-        # ── Checkpoint on improvement ─────────────────────────────────────────
-        if val_total < best_val:
-            best_val   = val_total
-            best_epoch = epoch
-            last_improvement_epoch = epoch
-            torch.save(model.state_dict(), checkpoint_path)
+        # ── Two-phase checkpoint ──────────────────────────────────────────────
+        # Warmup phase (data_weight=0): ramp-scaled val_total is incomparable
+        # across epochs because ramp grows 0→1.  Track raw physics (no ramp)
+        # so the checkpoint reflects genuine physics convergence, not the epoch
+        # with the smallest ramp multiplier (which is always epoch 1).
+        #
+        # Post-warmup phase (data_weight=1.0, ramp=1.0): val_total is comparable
+        # — data and physics both enter at fixed weights.  Use it normally.
+        if epoch <= warmup_epochs:
+            raw_physics = (
+                lambda_gyy   * val_gyy   +
+                lambda_az    * val_az    +
+                lambda_vel   * val_vel   +
+                lambda_phase * val_phase
+            )
+            if raw_physics < best_warmup_score:
+                best_warmup_score = raw_physics
+                best_warmup_epoch = epoch
+                last_improvement_epoch = epoch
+                torch.save(model.state_dict(), warmup_checkpoint_path)
+        else:
+            if val_total < best_val:
+                best_val   = val_total
+                best_epoch = epoch
+                last_improvement_epoch = epoch
+                torch.save(model.state_dict(), checkpoint_path)
 
         # ── Early stopping ────────────────────────────────────────────────────
         if epoch >= early_stop_min_epoch and (epoch - last_improvement_epoch) >= early_stop_patience:
@@ -347,7 +388,8 @@ def main():
             print(
                 f"Epoch {epoch:4d}/{epochs_max}"
                 f" | data={val_data:.4f}"
-                f" | ode={val_ode:.4f}"
+                f" | gyy={val_gyy:.4f}"
+                f" | az={val_az:.4f}"
                 f" | vel={val_vel:.4f}"
                 f" | phase={val_phase:.4f}"
                 f" | ramp={physics_weight:.2f}"
@@ -356,15 +398,16 @@ def main():
             )
 
             metric_entry = {
-                "epoch":        epoch,
-                "val_data":     val_data,
-                "val_ode":      val_ode,
-                "val_vel":      val_vel,
-                "val_phase":    val_phase,
-                "val_total":    val_total,
+                "epoch":          epoch,
+                "val_data":       val_data,
+                "val_gyy":        val_gyy,
+                "val_az":         val_az,
+                "val_vel":        val_vel,
+                "val_phase":      val_phase,
+                "val_total":      val_total,
                 "physics_weight": physics_weight,
-                "lr":           current_lr,
-                "timestamp":    time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "lr":             current_lr,
+                "timestamp":      time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             }
             metrics_log.append(metric_entry)
 
@@ -374,9 +417,14 @@ def main():
     # ── Final report ──────────────────────────────────────────────────────────
     print()
     print("Training complete.")
-    print(f"  Best val loss: {best_val:.6f} at epoch {best_epoch}")
-    print(f"  Checkpoint: simulator/pinn/checkpoints/best_{run_id}.pt")
-    print(f"  Metrics:    simulator/pinn/checkpoints/run_{run_id}_metrics.jsonl")
+    print(f"  Warmup best  raw_physics={best_warmup_score:.4f} at epoch {best_warmup_epoch}")
+    print(f"  Warmup checkpoint: simulator/pinn/checkpoints/warmup_best_{run_id}.pt")
+    if best_epoch > 0:
+        print(f"  Post-warmup best val_total={best_val:.6f} at epoch {best_epoch}")
+        print(f"  Post-warmup checkpoint: simulator/pinn/checkpoints/best_{run_id}.pt")
+    else:
+        print("  Post-warmup checkpoint: not saved (training ended at warmup)")
+    print(f"  Metrics: simulator/pinn/checkpoints/run_{run_id}_metrics.jsonl")
 
 
 if __name__ == "__main__":

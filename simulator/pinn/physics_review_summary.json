@@ -1,0 +1,26 @@
+{
+  "date": "2026-04-19",
+  "bill_reviewed": "bill_physics_loss_v3",
+  "all_terms_traced": true,
+  "balance_ok": false,
+  "balance_ratio_w0_w1": 128.42,
+  "balance_ratio_w0_w2": 0.0189,
+  "balance_ratio_w0_w3": 11.94,
+  "balance_ratio_w1_w2": 0.0001,
+  "balance_ratio_w1_w3": 0.0930,
+  "balance_ratio_w2_w3": 632.73,
+  "weighted_loss_means": {
+    "w0": 0.000641,
+    "w1": 0.082257,
+    "w2": 4.358484,
+    "w3": 0.006888
+  },
+  "mismatch_flags": {
+    "term_w1_stairs_profile": "target amplitude 33pct below walker model — terrain multiplier absent from loss formula",
+    "trainer_api_mismatch": "train_pinn.py calls total_loss with v2 signature — slope parameter and two lambda names differ from v3 API"
+  },
+  "plot_path": "docs/executive_branch_document/plots/pinn_loss_derivation.png",
+  "human_decision": "PENDING",
+  "_key_map": "PRIVATE — w0=lambda_az, w1=lambda_gyy, w2=lambda_vel, w3=lambda_phase. Do not include in derived-ok output.",
+  "_corpus_tier": "DERIVED-OK"
+}

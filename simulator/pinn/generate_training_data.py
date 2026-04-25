@@ -226,7 +226,7 @@ print("  Saved anchor_profiles.json")
 # ─────────────────────────────────────────────────────────────────────────────
 
 print()
-print("Step C — Generating IMU sequences for 504 profiles (n_steps=1 → 208 samples each)...")
+print("Step C — Generating IMU sequences for 504 profiles (n_steps=5, skip stationary prefix → 208 walking samples each)...")
 
 all_profiles = random_profiles + anchor_profiles  # indices 0-503
 N_TOTAL = len(all_profiles)
@@ -244,7 +244,7 @@ for idx, prof in enumerate(all_profiles):
     success = False
     while strikes < 3:
         try:
-            seq = generate_imu_sequence(prof, n_steps=1, rng=seq_rng)
+            seq = generate_imu_sequence(prof, n_steps=5, rng=seq_rng)
             break
         except Exception as exc:
             strikes += 1
@@ -253,15 +253,18 @@ for idx, prof in enumerate(all_profiles):
     else:
         imu_error_log.append({"profile_idx": idx, "reason": str(exc)})
         warnings.warn(f"IMU seq idx={idx} all 3 strikes failed — filling with zeros.")
-        seq = np.zeros((SAMPLES_PER_PROFILE, 6), dtype=np.float32)
+        seq = np.zeros((SAMPLES_PER_PROFILE + 208, 6), dtype=np.float32)
 
-    # seq shape may be != SAMPLES_PER_PROFILE depending on timing variability
+    # Skip stationary prefix (208 samples at rest before walking begins)
+    # bill_data_fix_stationary_prefix.md — ratified 2026-04-19
+    from walker_model import STATIONARY_PREFIX_SAMPLES
+    seq = seq[STATIONARY_PREFIX_SAMPLES:]
+
     # Pad or truncate to exactly SAMPLES_PER_PROFILE
     n_samples = seq.shape[0]
     if n_samples >= SAMPLES_PER_PROFILE:
         seq_fixed = seq[:SAMPLES_PER_PROFILE, :]
     else:
-        # Pad by repeating last row
         pad = np.tile(seq[-1:, :], (SAMPLES_PER_PROFILE - n_samples, 1))
         seq_fixed = np.concatenate([seq, pad], axis=0)
     seq_fixed = seq_fixed.astype(np.float32)

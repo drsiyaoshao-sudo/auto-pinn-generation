@@ -237,3 +237,22 @@ Operational definition: A training run satisfies Amendment 20 if:
 4. The warmup phase duration and physics weight schedule are set in the ratified Bill for that training run (Amendment 17 applies to all weight values).
 
 Responsible agent: `pinn-compiler` (documents warmup schedule in Bill), `pinn-executor` (enforces and logs criterion 2 before transitioning phases)
+
+---
+
+### Amendment 21 — Data-Physics Alignment Rule
+*Traces to: Article I*
+*Ratified: 2026-04-18. Proposed by: sole human engineer. Ratified by: sole human engineer.*
+*Grounds: Physics loss divergence diagnostic (2026-04-18) — l_ode spring oscillator misspecification.*
+
+The physics loss generating function for each constrained PINN output must use the same mathematical form as the walker_model.py generating function for that output, with amplitude and timing derived algebraically from the three walking primitives (Article I). A physics loss term whose mathematical structure contradicts the data-generating function is not a physics constraint — it is a misspecified penalty. Such terms are prohibited.
+
+Expansion: The l_ode term in physics_loss.py modelled CoM vertical motion as a damped harmonic oscillator (d²z/dt² + ω²·z = F_contact). The walker_model.py generating function for gy_dps is not a spring oscillator — it is a composite of an exponential decay at heel strike, a linear ramp during mid-stance, and a half-sine push-off pulse at the end of stance, with amplitude peak_angvel_dps = (100 + 65 × v_walk) × slope_factor, where v_walk = (cadence_spm / 60) × step_length_m. The spring oscillator ODE cannot converge to a half-sine pulse: the residual diverges as training progresses (val_ode 36 → 58 over 100 epochs, v3 run). This divergence is not a training instability — it is a structural mismatch between the loss function and the data-generating function. The same divergence would occur at any learning rate, with any number of epochs, at any weight scale.
+
+Operational definition: For each PINN output channel to be physics-constrained:
+1. Read the generating function for that channel from walker_model.py.
+2. Identify which of the three primitives (cadence, step_length, vertical_oscillation) determine the amplitude, timing, and shape of the signal.
+3. The physics loss term must penalise deviation from a target waveform constructed from those primitives using the same mathematical form (exponential, half-sine, linear ramp, Gaussian — whichever walker_model.py uses).
+4. No spring oscillator ODE may be used for a channel whose walker_model.py generating function is not a harmonic oscillator.
+
+Responsible agent: `loss-setter` (writes physics_loss.py), `physics-reviewer` (verifies generating function match before human approval)

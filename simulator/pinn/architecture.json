@@ -1,4 +1,6 @@
 {
+  "architecture_class": "PolynomialWaveletOuterProduct",
+  "version": "v2",
   "input_dim": 10,
   "input_fields": [
     "cadence_spm",
@@ -13,21 +15,51 @@
     "terrain_int"
   ],
   "terrain_encoding": {"flat": 0, "slope": 1, "stairs": 2},
-  "time_input": "t_normalised [0,1] — appended to x before Fourier projection",
-  "combined_input_dim": 11,
-  "use_fourier": true,
-  "fourier_dim": 256,
-  "fourier_sigma": 1.0,
-  "fourier_seed": 42,
-  "fourier_projection_dim": 512,
-  "hidden_dim": 256,
-  "n_layers": 4,
+  "time_input": "t_normalised [0,1] — passed to WaveletBranch separately (not concatenated)",
+  "proj_dim": 32,
+  "n_wavelets": 24,
+  "outer_dim": 1024,
+  "hidden_dim": 128,
+  "n_layers": 3,
+  "use_fourier": false,
+  "fourier_sigma": null,
   "activation": "GELU",
   "output_dim": 6,
   "output_units": ["ax_ms2", "ay_ms2", "az_ms2", "gx_dps", "gy_dps", "gz_dps"],
   "output_activation": "none",
-  "approx_parameters": 800000,
-  "architecture_selection_reason": "data_config.json absent at architecture time — default Fourier (conservative). Stairs terrain in future scope; Fourier features handle non-sinusoidal sigmoid toe-roll loading.",
+  "total_trainable_parameters": 166582,
+  "polynomial_branch": {
+    "n_raw_features": 19,
+    "feature_description": "3 normalised primitives + 3 derived (v_walk, omega, peak_angvel_norm) + 6 degree-2 cross terms + 7 secondary inputs",
+    "proj_dim": 32,
+    "article_i_trace": "v_walk = (cadence_spm/60)*step_length_m; omega = 2*pi*cadence_spm/60; peak_angvel_norm = (100+65*v_walk)/350"
+  },
+  "wavelet_branch": {
+    "n_wavelets": 24,
+    "wavelet_type": "MexicanHat",
+    "wavelet_formula": "psi(u) = (1 - u^2) * exp(-u^2/2), u = (t - mu)/scale",
+    "init_mu": "linspace(0, 1, 24)",
+    "init_scale": 0.05,
+    "init_scale_derivation": "walker_model.py heel-strike sigma=0.015s * factor-of-2 margin = 0.03s, rounded to 0.05s for sub-stance resolution",
+    "deterministic_bases": ["sin(pi*t)", "sin(2*pi*t)", "t"],
+    "n_total_features": 27,
+    "proj_dim": 32,
+    "amendment_21_alignment": "Mexican hat matches curvature of heel-strike Gaussian impulse and push-off half-sine pulse in walker_model.py _generate_step() lines 253-278"
+  },
+  "fusion": {
+    "method": "outer_product",
+    "description": "bmm(x_emb.unsqueeze(2), t_emb.unsqueeze(1)) -> reshape (N, 1024)",
+    "rationale": "Factorises amplitude-from-primitives x shape-from-time, mirroring walker_model.py: gy = peak_angvel(cadence, step_length) * shape_function(t, stance_frac)"
+  },
+  "terrain_scope": "flat + slope + stairs (data_config.json stairs weight = 0.20 > 0)",
+  "replaces_v1": {
+    "architecture": "FourierFeatureNetwork",
+    "defects": [
+      "sigma=1.0 maps cadence_spm~95 to Fourier argument ~597 rad — chaotic frequency regime with no physical grounding",
+      "Linear Fourier projection cannot compute v_walk = cadence * step_length (nonlinear product of two inputs)"
+    ]
+  },
+  "bill_reference": "bill_layer_setter_v2.md",
   "created_by": "layer-setter",
-  "date": "2026-04-03"
+  "date": "2026-04-19"
 }

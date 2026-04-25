@@ -178,3 +178,33 @@ Position B direction prevailed. The Justice ruled that the Benjamin Franklin Pri
 Any PINN training run that begins with data loss dominant (>50% of total loss at epoch 1) without a preceding physics-dominant warmup phase that satisfies Amendment 20 criterion 2 (verified downward trend in all three physics loss terms during warmup) is constitutionally invalid. A checkpoint produced by such a run is not eligible for use in pinn-validator, grid search, or any downstream clinical inference step. The physics warmup criterion must be documented as a passed exit gate in the training Bill before any checkpoint advances to the next pipeline stage.
 
 **Files Changed:** No implementation — ruling establishes the constitutional training order requirement. Amendment 20 is the operative rule. A new Bill is required before any training script is modified to implement the physics-first warmup phase.
+
+---
+
+### The Polynomial-Wavelet Architecture Enactment — 2026-04-19
+
+**Bill:** bill_layer_setter_v2.md — "Replace Fourier Feature Network with Polynomial-Wavelet Outer-Product Architecture"
+**Proposed by:** layer-setter agent
+**Ratified by:** Human (Justice), 2026-04-19
+
+**Problem Statement:**
+The Fourier Feature Network (v1, sigma=1.0) had two structural defects: (1) the random projection is linear and cannot compute v_walk = cadence_spm/60 × step_length_m — a nonlinear product required by Article I to trace gy amplitude to the primitives; (2) sigma=1.0 with physical inputs (cadence_spm ~ 95) placed Fourier arguments at ~600 radians, producing chaotically phase-distributed features whose gradients oscillate sign unpredictably with respect to cadence. Both defects are structural — not tunable — constituting Article I and Benjamin Franklin Principle violations.
+
+**Physical/Empirical Basis:**
+Frequency regime calculation: for cadence_spm=95, sigma=1.0, the Fourier argument 2π × b^T × x ~ 597 rad. sin(597) is effectively random over any 1 spm perturbation in cadence. E[sin²(2π × b × 95)] = 0.5 regardless of b — Fourier features carry no cadence-specific information in expectation. Additionally, val_ode divergence (36→58 over 100 epochs in v3 run) was caused by the same mismatch principle applied to the physics loss (corrected by bill_physics_loss_v3.md / Amendment 21). The same alignment principle governs the model basis: a Fourier basis has no correspondence to any mathematical form in walker_model.py's gy generating function.
+
+**Ruling (Enactment):**
+Bill ratified. The Polynomial-Wavelet Outer-Product Network (v2) is the constitutionally required PINN architecture for this codebase from this date forward. The Fourier Feature Network is prohibited.
+
+Architecture enacted:
+- Polynomial branch: explicit v_walk, omega, peak_angvel_norm + degree-2 cross-terms (19 features → Linear(19,32)) — Article I compliant
+- Trainable wavelet bank: 24 Mexican hat wavelets (scale init ~30ms, matching heel-strike Gaussian impulse) + sin(πt), sin(2πt), t deterministic bases (matching push-off and ramp generating functions) — Amendment 21 compliant
+- Outer product fusion: (N,32) × (N,32) → (N,1024) — explicit amplitude × shape factorisation
+- MLP output head: Linear(1024→128→128→128→6), GELU, no output activation (Amendment 3)
+- 166,582 trainable parameters (within 50k–200k human-specified CPU-feasible range)
+- Smoke test: forward(shape(32,10), shape(32,)) → shape(32,6) float32 PASS
+
+**Precedent Effect:**
+Any future PINN architecture proposal must: (a) demonstrate that all primitive product interactions (v_walk, omega, peak_angvel) are represented as explicit features or explicit computations — not implicit learned weights in a linear projection; (b) justify the frequency/scale regime of any basis function from physical units, not from normalised-input convention; (c) align temporal basis functions with the mathematical form of the walker_model.py generating function for the relevant output (Amendment 21).
+
+**Files Changed:** `simulator/pinn/pinn_model.py` (full rewrite to v2), `simulator/pinn/architecture.json` (updated metadata), `docs/gaitsense_code/bills/bill_layer_setter_v2.md` (Bill archived)

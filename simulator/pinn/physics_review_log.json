@@ -1,7 +1,8 @@
 {
   "human_decision": "APPROVED",
   "reviewer": "shaosiyaooffacademic@gmail.com",
-  "review_date": "2026-04-18",
+  "review_date": "2026-04-19",
   "physics_loss_file": "simulator/pinn/physics_loss.py",
-  "notes": "Ratified by human at session 2026-04-18 alongside train_config_v3."
+  "bill_reviewed": "bill_physics_loss_v3",
+  "notes": "Approved after fixing FLAG 1 (stairs 1.5x multiplier added to l_gyy_pulse via terrain_int) and FLAG 2 (train_pinn.py updated to v3 API: slope_deg, terrain_int extracted from X; lambda_gyy, lambda_az wired; lambda_ode removed). Smoke test passed. gy detection threshold is 90 dps — physics loss target for stairs now correctly 182 dps, within the regime the step detector anchors on."
 }
